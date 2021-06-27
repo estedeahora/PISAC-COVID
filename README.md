@@ -1,2 +1,2 @@
-# PISAC-COVID
-Proyecto PISAC-COVID
+# Proyecto PISAC-COVID
+Este repositorio contiene los archivos de la Aplicación Shiny utilizada en el Proyecto <em>La implementación de políticas públicas para dar respuesta a la crisis desatada por la pandemia COVID-19: Una mirada desde las relaciones intergubernamentales y las redes de políticas</em> (Res 119-2020 PISAC-COVID-19-00021). 
