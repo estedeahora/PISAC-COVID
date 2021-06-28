@@ -631,7 +631,7 @@ server <- function(input, output, session) {
         clearGroup("DEF") 
     }
   })
-
+ 
 ### Gráfico de densidad de variables -------------------------------------
 
   output$HAB_histograma1 <- renderPlot({
