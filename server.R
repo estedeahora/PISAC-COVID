@@ -294,6 +294,44 @@ server <- function(input, output, session) {
   
   # DESARROLLAR
     
+### Resumen de población -----------------------------------------------------
+  # input$aglo
+  # DEMOG_r()
+  
+  output$resumen_dem <- renderTable({
+    
+    req(input$aglo)
+    
+    t_res <- DEMOG_r() %>%
+      summarise(Nivel = "Selección",
+                Población = sum(PERSONAS, na.rm = T),
+                Hogares = sum(HOGARES, na.rm = T),
+                Viviendas = sum(VIVIENDAS, na.rm = T),
+                Radios = n())
+    
+    if(input$aglo != "Seleccionar (Todos)"){
+      sel <- c("Total Aglomerados", input$aglo)
+    }else{
+      sel <- c("Total Aglomerados")
+    }
+    
+    rbind(resumen[sel, ],
+          t_res)
+    
+  })
+### Referencia de indicadores --------------------------------------------------
+  
+  output$desc <-  renderUI({
+    
+    ref_t <-  ref %>% filter(panel %in% input$tab1) 
+    final <- paste0("<strong>Descripción de los indicadores</strong>", 
+                    "<br>", ref_t$desc_panel [1],
+                    # "<strong>Indicador: </strong>", 
+                    # ref_t$desc_indic[ref_t$desc_indic == ], 
+                    "<br><br><strong>Fuente: </strong>", ref_t$source [1])
+    HTML(final)
+    })
+  
 # 1. Infraestructura urbana (SERVICIO())  -------------------------
 
 ### Salud ---------------------------------------------------------
@@ -384,16 +422,6 @@ server <- function(input, output, session) {
 # Armar gráfico para seleccionar por radio dentro de zoom.
 # Transformar radios a puntos surface y calcular población
 
-### Resumen población --------------------------------------------------------
-  # DEMOG_r()
-  
-  output$resumen_dem <- renderTable({
-    DEMOG_r() %>% 
-      summarise(Población = sum(PERSONAS, na.rm = T),
-                Hogares = sum(HOGARES, na.rm = T),
-                Viviendas = sum(VIVIENDAS, na.rm = T),
-                Radios = n())
-  }, digits = 0)
   
 ### Pirámide población ---------------------------------------------------
   # PIRAMIDE_r()
@@ -454,7 +482,7 @@ server <- function(input, output, session) {
     data.frame(v = RADIO_r()[[input$POB_sel]]) %>%
         ggplot(aes(x = v)) + 
         geom_density(color = "tomato3") + 
-        labs(x  = paste0(nom), y = "Densidad") +
+        labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
         theme_minimal() 
       
   })
@@ -465,15 +493,15 @@ server <- function(input, output, session) {
 ### Resumen Migrantes  ---------------------------------------------------
   # DEMOG_r()
   
-  output$resumen_mig <- renderTable({
-    
-    DEMOG_r() %>% 
-      summarise(Migrantes = sum(MIGRANTE, na.rm = T),
-                Población = sum(PERSONAS, na.rm = T),
-                Hogares = sum(HOGARES, na.rm = T),
-                Viviendas = sum(VIVIENDAS, na.rm = T),
-                Radios = n())
-  }, digits = 0)
+  # output$resumen_mig <- renderTable({
+  #   
+  #   DEMOG_r() %>% 
+  #     summarise(Migrantes = sum(MIGRANTE, na.rm = T),
+  #               Población = sum(PERSONAS, na.rm = T),
+  #               Hogares = sum(HOGARES, na.rm = T),
+  #               Viviendas = sum(VIVIENDAS, na.rm = T),
+  #               Radios = n())
+  # }, digits = 0)
   
 ### Gráfico de Torta ------------------------------------------------------
   # MIGRA_r()
@@ -484,8 +512,9 @@ server <- function(input, output, session) {
     
     MIGRA_r() %>%
       ggplot(aes(x = "", y = value, fill = name)) +
-      geom_bar(stat = "identity", width = 1, color = "white") +
+      geom_bar(stat = "identity", width = 2, color = "white") +
       coord_polar("y", start = 0) +
+      labs (fill = "País / Región") +
       theme_void()
   })
   
@@ -555,7 +584,23 @@ server <- function(input, output, session) {
 ### Radios visibles con Indicadores -------------------------------------
   # RADIO_r() + input$HAB_sel + 
   # input$tab1 %in% "HAB" + input$map_zoom 
-  
+  # observe({
+  #   req(input$tab1 %in% "SER")
+  #   browser()
+  #   })
+  observe({
+    
+    req(input$tab1 %in% "SER")
+    
+    leafletProxy("map") %>%
+      clearGroup("RAD") %>%
+      clearGroup("DEF") %>% 
+      clearGroup("CEN_M") %>% 
+      clearGroup("POB") %>%
+      clearGroup("ENV") 
+    
+      })
+
   observe({
     
     req(input$map_zoom)
@@ -626,7 +671,8 @@ server <- function(input, output, session) {
         
       }
     }else{
-      leafletProxy("map",data = RADIO_env()) %>%
+      
+      leafletProxy("map") %>%
         clearGroup("RAD") %>%
         clearGroup("DEF") 
     }
@@ -641,14 +687,14 @@ server <- function(input, output, session) {
         data.frame(v = RADIO_r()[[input$HAB_sel]] / RADIO_r()$Hogares2010 * 100) %>%
           ggplot(aes(x = v)) + 
           geom_density(color = "tomato3") + 
-          labs(x  = paste0("% ", nom), y = "Densidad") +
+          labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
           theme_minimal() 
         
       }else{
         data.frame(v = RADIO_r()[[input$HAB_sel]]) %>%
           ggplot(aes(x = v)) + 
           geom_density(color = "tomato3") + 
-          labs(x  = paste0("% ", nom), y = "Densidad") +
+          labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
           theme_minimal() 
       }
   })
@@ -659,7 +705,9 @@ server <- function(input, output, session) {
       pivot_longer(cols = c(Cuantitativo, Cualitativo)) %>%
       ggplot(aes(x = value, color = name)) + 
       geom_density() + 
-      labs(color = "Déficit e Vivienda", x  =  "Indicador de déficit", y = "Densidad") +
+      labs(color = "Déficit de Vivienda", 
+           x  =  "Indicador de déficit en los radios visualizados", 
+           y = "Densidad") +
       theme_minimal() 
       
   })

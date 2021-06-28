@@ -3,25 +3,41 @@ ui <- fluidPage(
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
              fluidRow(
-               column(width = 2,
-                      selectInput("aglo", "Elija el Aglomerado",
-                                  choices = AGLO)
+               column(width = 4,
+                      fluidRow(
+                        column(width = 6,
+                               selectInput("aglo", "Elija el Aglomerado",
+                                           choices = AGLO)
+                        ),
+                        column(width = 2,
+                               tabsetPanel(
+                                 #   id = "switcher",
+                                 # type = "hidden",
+                                 # tabPanelBody("panel1", ""),
+                                 # tabPanelBody("panel2",
+                                 # selectInput("muni", "Elija el Municipio",
+                                 #             choices = NULL))
+                               )
+                        ),
+                      ),
+                      fluidRow(
+                        column(width = 12,
+                          checkboxGroupInput("zonas", "Zonas urbanas",
+                                             poligono, inline = T)
+                        )
+                      ),
                ),
-               column(width = 2,
-                      tabsetPanel(
-                        id = "switcher",
-                        type = "hidden",
-                        tabPanelBody("panel1", ""),
-                        tabPanelBody("panel2",
-                                     selectInput("muni", "Elija el Municipio",
-                                                 choices = NULL))
-                      )
-               ),
-               column(width = 3, 
+               
+               # column(width = 3, 
                       # Selección de Polígonos generales
-                      checkboxGroupInput("zonas", "Zonas urbanas",
-                                         poligono, inline = T))
-             ),  
+                      # checkboxGroupInput("zonas", "Zonas urbanas",
+                      #                    poligono, inline = T)
+               # ),
+               column(width = 5,
+                      tableOutput("resumen_dem")
+                      )
+               
+             ), 
              # Body de la API
              fluidRow(
                sidebarLayout(
@@ -60,10 +76,12 @@ ui <- fluidPage(
                                                                    choices = infraestructura, 
                                                                    selected = infraestructura[1]),
                                                        column(width = 6, 
-                                                              sliderInput("radio", "Radio", value = 8, min = 1, max = 50)
+                                                              sliderInput("radio", "Radio", value = 8, 
+                                                                          min = 1, max = 50)
                                                        ),
                                                        column(width = 6, 
-                                                              sliderInput("blur", "Esfumado", value = 6, min = 1, max = 50)
+                                                              sliderInput("blur", "Esfumado", value = 6, 
+                                                                          min = 10, max = 80)
                                                        )
                                                        
                                                        # switchInput(inputId = "heat", label = "Heatmap", value = FALSE,
@@ -77,9 +95,9 @@ ui <- fluidPage(
                                # Panel de datos demográfico
                                tabPanel("Demográfico", value = "DEM",
                                         icon = icon("align-center", lib = "glyphicon"),
-                                        tableOutput("resumen_dem"),
-                                        switchInput(inputId = "pir", value = TRUE, size = "small",
-                                                    onLabel = "N", offLabel = "%"),
+                                        # tableOutput("resumen_dem"),
+                                        # switchInput(inputId = "pir", value = TRUE, size = "small",
+                                        #             onLabel = "N", offLabel = "%"),
                                         plotOutput("piramide")
                                ),
                                # Panel de Variables para polígonos (VER NOMBRE)
@@ -112,7 +130,7 @@ ui <- fluidPage(
                                           ),
                                           multiple = TRUE
                                         ),
-                                        tableOutput("resumen_mig"),
+                                        # tableOutput("resumen_mig"),
                                         plotOutput("migrantes")
                                         
                                ),
@@ -152,19 +170,17 @@ ui <- fluidPage(
                                         
                                )
                    ),
-                   strong("Descripción del indicador")
                  ),
                  # Mapa principal
-                 mainPanel(
+                 mainPanel(width = 7,
                    leafletOutput("map",  height = 600)
                  )
                )
-             )#,
-             # fluidRow(
-             #   column(width = 4#, strong("Descripción del indicador")
-             #          # DESARROLLAR DESCRIPCIÓN DE INDICADORES. ARMAR CSV
-             #          
-             #          ),
+             ),
+             fluidRow(
+               column(width = 4, 
+                      htmlOutput("desc")
+                      )
              #   column(width = 8, 
              #          # DESARROLLAR CALCULO DE DISTANCIAS
              #          # fluidRow(
@@ -177,10 +193,10 @@ ui <- fluidPage(
              #          #   textOutput("y_point")
              #          # )
              #   )           
-             # )
+             )
     ),
     tabPanel("Evolución", icon = icon("line-chart")),
-    tabPanel("Metodología",
+    tabPanel("Proyecto",
              h1("Acerca del proyecto"),
              "Esta aplicación fue desarrollada en el marco del proyecto PISAC-COVID, coordinado por María Mercedes Di Virgilio...",
              h1("Nota metodológica"),

@@ -13,11 +13,11 @@ if (!exists("MAPA")) {
   options(OutDec= ",", big.mark = T)
   # Cargar datos
   load("data/_data.RData")
-
+  ref <- read.csv("data/ref.csv")
+  
   INFRAEST <- INFRA
   rm(INFRA)
 }
-
 
 # Armar variables para selectores -------------------------------------
 
@@ -41,23 +41,22 @@ paises <- list(Sudamericanos = paises[c(2:4, 6:7, 9, 1)],
 deficit <- DEMOG %>%
   select('Sin deficit':'Vivienda con Núcleo Allegado Interno + Mejora') %>% names()
 
-
 indic_POB <- c('Edad Promedio' = "EDAD",
                'Tasa de Juventud' = "t_JUV",
                'Tasa de Envejecimiento' = "t_ENV",
-               'Porcentaje de personas Sin Estudios Secundarios Completos' = "SEC_p",
-               'Porcentaje de personas Con Estudios Universitarios Completos' = "SUP_p"
+               '% de personas Sin Estudios Secundarios Completos' = "SEC_p",
+               '% de personas Con Estudios Universitarios Completos' = "SUP_p"
                )
 
 indic_HAB <- c('Déficit de Vivienda por hogares' = "DEFICIT",
                'Promedio de Hacinamiento (Personas por cuarto)' = "H_HAC",
-               'Hogares con NBI' = "H_NBI",
-               'Hogares sin agua potable' = "H_AGUA",
-               'Hogares sin desague cloacal/pozo' = "H_CLOACA",
-               'Hogares en Vivienda sin recolección de basura' = "BASURA",
-               'Hogares en Vivienda sin acceso a transporte público (300m)' = "TRANSPORTE",
-               'Hogares en Vivienda sin pavimento' = "PAVIMENTO",
-               'Hogares en Vivienda sin alumbrado público' = "ALUMBRADO" )
+               '% de Hogares con NBI' = "H_NBI",
+               '% de Hogares sin agua potable' = "H_AGUA",
+               '% de Hogares sin desague cloacal/pozo' = "H_CLOACA",
+               '% de Hogares en Vivienda sin recolección de basura' = "BASURA",
+               '% de Hogares en Vivienda sin acceso a transporte público (300m)' = "TRANSPORTE",
+               '% de Hogares en Vivienda sin pavimento' = "PAVIMENTO",
+               '% de Hogares en Vivienda sin alumbrado público' = "ALUMBRADO" )
 
 poligono <-  c('Municipio' = "MUNI",
                'Barrio Popular' = "RENABAP",
@@ -74,16 +73,32 @@ infraestructura <- c('Salud General' = "General",
 
 # Bases auxiliares --------------------------------------------------------
 
+# Base auxiliar con límites de radios para selección
+
 R <- MAPA$RADIO %>%
   select(ID) %>%
   cbind(sapply(.$geometry, st_bbox) %>% t()) %>%
   st_drop_geometry()
 
+# Carto con centroides de radios
 CEN <- MAPA$RADIO %>%
   st_point_on_surface() %>%
   left_join(DEMOG %>% select(c("ID", all_of(unname(unlist(paises))))), by = "ID" )
 
-
+# Datos demográficos resumen
+resumen <- DEMOG %>%
+  group_by(Nivel = aglo) %>%
+  summarise(Población = sum(PERSONAS, na.rm = T),
+            Hogares = sum(HOGARES, na.rm = T),
+            Viviendas = sum(VIVIENDAS, na.rm = T),
+            Radios = n()) 
+            
+resumen <- rbind(resumen,
+                c("Total Aglomerados", apply(resumen[-1], 2, sum ))) %>%
+  as.data.frame()
+rownames(resumen) <- resumen$Nivel
+  
+  
 # Íconos ------------------------------------------------------------------
 
 size <- 25
