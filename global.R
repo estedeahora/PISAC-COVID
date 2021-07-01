@@ -9,25 +9,29 @@ library(shinyWidgets)
 
 # Carga de Datos ----------------------------------------------------------
 
+options(OutDec= ",", big.mark = T)
+
 if (!exists("MAPA")) {
-  options(OutDec= ",", big.mark = T)
   # Cargar datos
   load("data/_data.RData")
+
   ref <- read.csv("data/ref.csv")
-  
+  # leaflet() %>%
+  #   addTiles() %>%
+  #   addPolygons(fillOpacity = 0.5, opacity = 0,
+  #               fillColor = ~colorQuantile("YlOrRd", SALUD_no, n = 9)(SALUD_no),
+  #               popup = ~paste0(departamen, "<br>", ESTATAL, " (", round(SALUD_no, 1), "%)" ))
+  DEPTO <- MAPA$DEPTO
+  MAPA$DEPTO <- NULL
   INFRAEST <- INFRA
   rm(INFRA)
 }
 
 # Armar variables para selectores -------------------------------------
 
-MUNI <- MAPA$MUNI %>%
-  st_drop_geometry() %>%
-  select(muni = name, aglo)
-
 VARS <-  c("Personas por vivienda" = "VIV")
 
-AGLO <- c("Seleccionar (Todos)", MAPA$AGLO$aglo)
+AGLO <- c("Seleccionar (Todos)", unique(MAPA$AGLOMERADO$aglo))
 
 l <- c(paste(seq(0, 90, by = 5),
              seq(5, 95, by = 5), sep = "-"),
@@ -44,8 +48,9 @@ deficit <- DEMOG %>%
 indic_POB <- c('Edad Promedio' = "EDAD",
                'Tasa de Juventud' = "t_JUV",
                'Tasa de Envejecimiento' = "t_ENV",
-               '% de personas Sin Estudios Secundarios Completos' = "SEC_p",
-               '% de personas Con Estudios Universitarios Completos' = "SUP_p"
+               '% de Personas Sin Estudios Secundarios Completos' = "SEC_p",
+               '% de Personas Con Estudios Universitarios Completos' = "SUP_p",
+               '% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUD"
                )
 
 indic_HAB <- c('Déficit de Vivienda por hogares' = "DEFICIT",
@@ -59,6 +64,7 @@ indic_HAB <- c('Déficit de Vivienda por hogares' = "DEFICIT",
                '% de Hogares en Vivienda sin alumbrado público' = "ALUMBRADO" )
 
 poligono <-  c('Municipio' = "MUNI",
+               # 'Departamento' = "DEPTO",
                'Barrio Popular' = "RENABAP",
                'Country' = "COUNTRY")
 
@@ -91,14 +97,14 @@ resumen <- DEMOG %>%
   summarise(Población = sum(PERSONAS, na.rm = T),
             Hogares = sum(HOGARES, na.rm = T),
             Viviendas = sum(VIVIENDAS, na.rm = T),
-            Radios = n()) 
-            
+            Radios = n())
+
 resumen <- rbind(resumen,
                 c("Total Aglomerados", apply(resumen[-1], 2, sum ))) %>%
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
-  
-  
+
+
 # Íconos ------------------------------------------------------------------
 
 size <- 25
@@ -131,7 +137,7 @@ icon_lista <- iconList(
                      iconWidth = size-5, iconHeight = size-5)
   )
 
-# Seleccion
+# Iconos para Seleccion
 # icon_sel  <- data.frame(
 #   img = c(sprintf("<img src='icon/SALUD_hospital.png' width=30px><div class='jhr'>%s</div></img>", "General"),
 #           sprintf("<img src='icon/SALUD_hospital.png' width=30px><div class='jhr'>%s</div></img>", "Especialidad"),
@@ -190,7 +196,7 @@ sel_serv <- function(lista, base, seleccion,
       showGroup(group = grupo)
 
   }else{
-    leafletProxy("map",data = lista[[base]]) %>%
+    leafletProxy("map", data = lista[[base]]) %>%
       hideGroup(grupo)
   }
 }
@@ -219,8 +225,9 @@ heat_map <- function(lista, base,
 
 
 addRadio <- function(map, data, grupo,
-                     indicador, PAL = "YlOrRd"
-                     ){
+                     indicador, 
+                     # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
+                     PAL = "YlOrRd" ){
 
   data$indic <- data[[indicador]]
 
@@ -251,8 +258,8 @@ addRadio <- function(map, data, grupo,
                   # fillOpacity = ~VAR_FILL,
                   fillColor = "#A9A9A9",
                   highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                      bringToFront = TRUE)) %>%
-      hideGroup(grupo)
+                                                      bringToFront = TRUE)) #%>%
+      # hideGroup(grupo)
   }
 
 }

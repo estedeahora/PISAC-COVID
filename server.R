@@ -4,22 +4,6 @@ server <- function(input, output, session) {
   
 ### Paneles UI ----------------------------------------------------------
   
-  # Panel de selección jerárquico para municipios
-  # input$aglo
-  
-  panel_muni <- reactive({
-    if(input$aglo != "Seleccionar (Todos)"){
-      MUNI %>%
-        filter(aglo == input$aglo)
-    }
-  })
-  
-  observeEvent(panel_muni(), {
-    choices <- unique(panel_muni()$muni)
-    updateSelectInput(inputId = "muni", selected = "Seleccionar (Todos)", 
-                      choices = c("Seleccionar (Todos)", choices) )
-  })
-  
   # Servicios (SER) -----------------------------------------------------
   
   # Cluster Sí/no
@@ -44,6 +28,10 @@ server <- function(input, output, session) {
   # Reactivo para pirámide
   
   PIRAMIDE_r <- reactive({
+    cat(as.character(Sys.time()), "PIRAM_r_pre", "\n")
+    req(input$tab1 %in% c("DEM"))
+    cat(as.character(Sys.time()), "PIRAM_r", "\n")
+    
     DEMOG_r() %>%
       select(ID, eph_aglome, aglo, PERSONAS,
              'V_0-5':'M_+95') %>%
@@ -61,6 +49,10 @@ server <- function(input, output, session) {
   # Migración (MIG) ------------------------------------------------
   
   MIGRA_r <- reactive({
+    cat(as.character(Sys.time()), "MIGRA_r", "\n")
+    
+    req(input$tab1 %in% c("MIG"))
+    
     DEMOG_r() %>%
       select(ID, eph_aglome, aglo, PERSONAS, MIGRANTE,
              'América Otros':'Asia y Oceanía') %>%
@@ -78,14 +70,16 @@ server <- function(input, output, session) {
     updateTabsetPanel(inputId = "p_HAB", 
                       selected = if(input$HAB_sel == "DEFICIT") {"p_DEFICIT"} else {"p_HABITAT"})
   })
-
-  
   
 ### Selección de aglomerados --------------------------------------------------
   # input$aglo
   
   ## MAPA 
   POLIGONO <- reactive({
+    cat(as.character(Sys.time()), "POLIGONO", "\n")
+    
+    req(input$aglo)
+    
     if(input$aglo == "Seleccionar (Todos)"){
       MAPA
     }else{
@@ -95,6 +89,7 @@ server <- function(input, output, session) {
 
   ## INFRAEST
   SERVICIO <- reactive({
+    
     req(input$tab1 %in% c("SER"))
     
     if(input$aglo == "Seleccionar (Todos)"){
@@ -110,6 +105,7 @@ server <- function(input, output, session) {
   # input$map_bounds
   
   limite <- reactive({
+    
     req(input$tab1 %in% c("DEM", "POB", "MIG", "HAB"))
     req(input$map_bounds)
     
@@ -131,19 +127,23 @@ server <- function(input, output, session) {
   # limite()
 
   RADIO_r <- reactive({
-    
+    cat(as.character(Sys.time()), "RADIO_r_pre", "\n")
     req(length(limite()$ID ) > 0)
+    cat(as.character(Sys.time()), "RADIO_r", "\n")
 
     MAPA$RADIO %>%
       filter(ID %in% limite()$ID) 
-    
   })
   
   # Envolvente de radios visibles
   # RADIO_r()
   
   RADIO_env <- reactive({
+    cat(as.character(Sys.time()), "RADIO_env", "\n")
     
+    req(RADIO_r())    
+    # ACA ESTABA EL ERROR
+
     RADIO_r() %>%
       summarise()
     
@@ -153,9 +153,11 @@ server <- function(input, output, session) {
   # limite()
   
   DEMOG_r <- reactive({
+    cat(as.character(Sys.time()), "DEMOG_r_pre", "\n")
     
     req(length(limite()$ID ) > 0)
-    
+    cat(as.character(Sys.time()), "DEMOG_r", "\n")
+
     DEMOG %>%
       filter(ID %in% limite()$ID) 
   })
@@ -164,12 +166,12 @@ server <- function(input, output, session) {
   # limite() 
   
   CEN_r <- reactive({
+    cat(as.character(Sys.time()), "CEN_r", "\n")
     
     req(length(limite()$ID ) > 0)
     
     CEN %>%
       filter(ID %in% limite()$ID)
-    
   })
   
   # Selección de centroide p/Migrantes 
@@ -177,6 +179,7 @@ server <- function(input, output, session) {
   # input$MIG_sel
   
   CEN_MIGRA_r <- reactive({
+    cat(as.character(Sys.time()), "CEN_MIGRA", "\n")
     
     req(input$tab1 %in% c("MIG") & length(input$MIG_sel) > 0 )
     
@@ -203,7 +206,9 @@ server <- function(input, output, session) {
   # POLIGONO()$AGLOMERADO
 
   output$map <- renderLeaflet({
-    mapa <- POLIGONO()$AGLOMERADO %>%
+    cat(as.character(Sys.time()), "MAPA_PPAL", "\n")
+    
+    POLIGONO()$AGLOMERADO %>%
       leaflet() %>%
       addProviderTiles(providers$CartoDB.Positron) %>%
       addResetMapButton() %>%
@@ -218,21 +223,6 @@ server <- function(input, output, session) {
       addPolygons(fill = FALSE, stroke = TRUE, 
                   color = "tomato",
                   opacity = 0.2)
-    
-    if(is.null(input$muni) || input$muni %in% c("Seleccionar (Todos)", "")){
-      mapa
-    }else{
-      bb <- POLIGONO()$MUNI %>% 
-        filter(name == input$muni) %>% 
-        st_bbox() %>% 
-        as.numeric()
-
-      mapa %>%
-        clearBounds() %>%
-        fitBounds(lng1 = bb[1], lng2 = bb[3],
-                  lat1 = bb[2], lat2 = bb[4])
-
-    }
   })
 
 ### Mapas suplementarios de territorios y envolventes ---------------------------
@@ -266,29 +256,39 @@ server <- function(input, output, session) {
   
   observe({
     
-    req(nrow(RADIO_env()))
+    # req(nrow(RADIO_env()))
+    cat(as.character(Sys.time()), "MAPA_ENV", "\n")
     
-    if(input$tab1 %in% c("DEM", "MIG") & 
-       input$map_zoom >= 9 & 
-       nrow(RADIO_env()) > 0){
-      
-      leafletProxy("map", data = RADIO_env()) %>%
-        clearGroup("ENV") %>%
-        addPolygons(group = "ENV",
-                    color = "azure1",
-                    fill = "azure1",
-                    noClip = T,
-                    opacity = 0) %>%
-        showGroup("ENV")
+    if(input$tab1 %in% c("DEM", "MIG") && 
+       input$map_zoom >= 9){
+      if(nrow(RADIO_env()) > 0){
+        leafletProxy("map", data = RADIO_env()) %>%
+          clearGroup("ENV") %>%
+          addPolygons(group = "ENV",
+                      color = "azure1",
+                      fill = "azure1",
+                      noClip = T,
+                      opacity = 0) %>%
+          showGroup("ENV")
+        }
     }else{
-      leafletProxy("map",data = RADIO_env()) %>%
+      leafletProxy("map") %>%
         clearGroup("ENV") 
     }
   })
   
 ### Descripción de indicadores -------------------------------------------------
   
-  # DESARROLLAR
+  output$desc <-  renderUI({
+
+    ref_t <-  ref %>% filter(panel %in% input$tab1)
+    final <- paste0("<strong>Descripción de los indicadores</strong>",
+                    "<br>", ref_t$desc_panel [1],
+                    # "<strong>Indicador: </strong>",
+                    # ref_t$desc_indic[ref_t$desc_indic == ],
+                    "<br><br><strong>Fuente: </strong>", ref_t$source [1])
+    HTML(final)
+  })
   
 ### Cálculo de distancias ------------------------------------------------------
   
@@ -297,40 +297,28 @@ server <- function(input, output, session) {
 ### Resumen de población -----------------------------------------------------
   # input$aglo
   # DEMOG_r()
-  
+
   output$resumen_dem <- renderTable({
-    
+
     req(input$aglo)
-    
+
     t_res <- DEMOG_r() %>%
       summarise(Nivel = "Selección",
                 Población = sum(PERSONAS, na.rm = T),
                 Hogares = sum(HOGARES, na.rm = T),
                 Viviendas = sum(VIVIENDAS, na.rm = T),
                 Radios = n())
-    
+
     if(input$aglo != "Seleccionar (Todos)"){
       sel <- c("Total Aglomerados", input$aglo)
     }else{
       sel <- c("Total Aglomerados")
     }
-    
+
     rbind(resumen[sel, ],
           t_res)
-    
+
   })
-### Referencia de indicadores --------------------------------------------------
-  
-  output$desc <-  renderUI({
-    
-    ref_t <-  ref %>% filter(panel %in% input$tab1) 
-    final <- paste0("<strong>Descripción de los indicadores</strong>", 
-                    "<br>", ref_t$desc_panel [1],
-                    # "<strong>Indicador: </strong>", 
-                    # ref_t$desc_indic[ref_t$desc_indic == ], 
-                    "<br><br><strong>Fuente: </strong>", ref_t$source [1])
-    HTML(final)
-    })
   
 # 1. Infraestructura urbana (SERVICIO())  -------------------------
 
@@ -338,6 +326,7 @@ server <- function(input, output, session) {
   # input$sel_infra 
   
   # Servicios generales (SERVICIO()$General)
+  
   observe({
     sel_serv(base = "General",
              seleccion = input$sel_infra, 
@@ -416,17 +405,17 @@ server <- function(input, output, session) {
              calor = input$act_heat,
              radio = input$radio,
              blur = input$blur)
-    
   })
 # 2. Demográficos (DEMOG_r + PIRAMIDE_r) ------------------------------------------------------------
-# Armar gráfico para seleccionar por radio dentro de zoom.
-# Transformar radios a puntos surface y calcular población
 
-  
 ### Pirámide población ---------------------------------------------------
   # PIRAMIDE_r()
   
   output$piramide <- renderPlot({
+    
+    req(input$tab1 == "DEM")
+    
+    cat(as.character(Sys.time()), "PIRAMIDE", "\n")
     PIRAMIDE_r()  %>%
       ggplot(mapping = aes(x = EDADQUI)) +
       geom_bar(aes(y = V), stat = "identity", fill = "blue", alpha = 0.4) +
@@ -439,47 +428,69 @@ server <- function(input, output, session) {
 
 # 3. Población -----------------------------------------------------------------
 
-### Radios visibles con Indicadores-------------------------------------------------------------------------
+### Radios visibles con Indicadores --------------------------------------------
   
   observe({
     
     req(input$map_zoom)
     req(input$POB_sel)
     
-    if(input$tab1 %in% "POB" & 
-       input$map_zoom >= 9 & 
+    cat(as.character(Sys.time()), "MAPA_POB_pre", "\n")
+    # Revisar. WARNING1. En SER, cuando cambia zoom pasa por acá. Quizás es para sacar mapa
+    
+    if(input$tab1 %in% "POB" && 
+       input$map_zoom >= 9 && 
        nrow(RADIO_r()) > 0){
       
       if(exists("nom") && nom != input$POB_sel){
         leafletProxy("map") %>%
           clearGroup("POB")
       }
+      cat(as.character(Sys.time()), "MAPA_POB", "\n")
       
       nom <- names(indic_POB)[indic_POB == input$POB_sel]
-      r_aux <- RADIO_r() 
-      r_aux$VARIABLE <- r_aux[[input$POB_sel]]
-      r_aux <- r_aux %>%
+
+      if(input$POB_sel == "SALUD"){
+        r_aux <- DEPTO %>%
+          rename(VARIABLE = SALUDno) %>%
+          mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
+                                 round(VARIABLE, 1)))
+      }else{
+        r_aux <- RADIO_r() 
+        r_aux$VARIABLE <- r_aux[[input$POB_sel]]
+        r_aux <- r_aux %>%
           mutate(cuadro = paste0("<strong>", nom, ":</strong> ", 
                                  round(VARIABLE, 1), 
                                  cuadro_DEM))
+      }
+      
       leafletProxy("map") %>%
           clearGroup("POB") %>%
           addRadio(data = r_aux, grupo = "POB", 
-                   indicador = "VARIABLE", PAL = "YlOrRd") # %>%
-        # showGroup("RAD")
+                   indicador = "VARIABLE", PAL = "YlOrRd")
+      
     }else{
-      leafletProxy("map",data = RADIO_env()) %>%
+      leafletProxy("map") %>%
         clearGroup("POB") 
     }
   })
   
-
-### Gráfico de densidad de variables  -------------------------------------------
-
+### Gráfico de densidad de variables -------------------------------------------
+  # input$POB_sel + RADIO_r()
+  
   output$POB_histograma <- renderPlot({
-    nom <- names(indic_POB)[indic_POB == input$POB_sel]
     
-    data.frame(v = RADIO_r()[[input$POB_sel]]) %>%
+    req(RADIO_r())
+    
+    nom <- names(indic_POB)[indic_POB == input$POB_sel]
+    if(input$POB_sel == "SALUD"){
+      r_db <- DEPTO %>%
+        rename(v = SALUDno)
+    }else{
+      r_db <- data.frame(v = RADIO_r()[[input$POB_sel]])
+    }
+      
+    r_db %>%
         ggplot(aes(x = v)) + 
         geom_density(color = "tomato3") + 
         labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
@@ -487,21 +498,7 @@ server <- function(input, output, session) {
       
   })
   
-  
 # 4. Migración (MIGRA_r + DEMOG_r + CEN_MIGRA_r)--------------------------
-  
-### Resumen Migrantes  ---------------------------------------------------
-  # DEMOG_r()
-  
-  # output$resumen_mig <- renderTable({
-  #   
-  #   DEMOG_r() %>% 
-  #     summarise(Migrantes = sum(MIGRANTE, na.rm = T),
-  #               Población = sum(PERSONAS, na.rm = T),
-  #               Hogares = sum(HOGARES, na.rm = T),
-  #               Viviendas = sum(VIVIENDAS, na.rm = T),
-  #               Radios = n())
-  # }, digits = 0)
   
 ### Gráfico de Torta ------------------------------------------------------
   # MIGRA_r()
@@ -509,6 +506,7 @@ server <- function(input, output, session) {
   output$migrantes <- renderPlot({
     
     req(input$tab1 %in% c("MIG") & length(input$MIG_sel) > 0 )
+    cat(as.character(Sys.time()), "TORTA_MIG", "\n")
     
     MIGRA_r() %>%
       ggplot(aes(x = "", y = value, fill = name)) +
@@ -526,9 +524,14 @@ server <- function(input, output, session) {
     req(input$map_zoom)
     req(length(input$MIG_sel) > 0 )
     
+    cat(as.character(Sys.time()), "MIGRA_CENT_pre", "\n")
+    # Revisar. WARNING1. En SER, cuando cambia zoom pasa por acá. Quizás es para sacar mapa
+    # También en Hábitat. Revisar en Gral
+    
     if(input$tab1 %in% c("MIG") && input$map_zoom >= 10 && nrow(CEN_MIGRA_r()) > 0){
       b <-  8 - (input$map_zoom- 9)/2
       b <- ifelse(b <= 1.5, 1.5, b)
+      cat(as.character(Sys.time()), "MIGRA_CENT", "\n")
       
       leafletProxy("map", data = CEN_MIGRA_r()) %>%
         clearGroup("CEN_M") %>%
@@ -549,45 +552,11 @@ server <- function(input, output, session) {
 
 ### Déficit ------------------------------------------------------------- 
   
-### Resumen Déficit -----------------------------------------------------
-  # 
-  # output$resumen_hab <- renderTable({
-  #   renderTable({
-  #     browser()
-  #     
-  #     t_aux <- RADIO_r()
-  #     
-  #     if(input$HAB_sel != "DEFICIT"){
-  #       
-  #       t_aux$indic <- t_aux[[input$HAB_sel]]
-  #       
-  #       if(input$HAB_sel != "H_HAC"){
-  #         t_aux <- t_aux() %>% 
-  #           summarise(Población = sum(Vivienda2010, na.rm = T),
-  #                     Hogares = sum(Hogares2010, na.rm = T),
-  #                     Viviendas = sum(Personas2010, na.rm = T),
-  #                     Radios = n(),
-  #                     INDIC = sum(indic, na.rm = T)
-  #           )
-  #         names(t_aux)[5] <- names(indic_HAB)[input$HAB_sel == indic_HAB]
-  #         t_aux
-  #       }else{
-  #         
-  #       }
-  #         
-  #     }
-  #     
-  #     
-  #   }, digits = 0)
-  # })
-  
 ### Radios visibles con Indicadores -------------------------------------
   # RADIO_r() + input$HAB_sel + 
   # input$tab1 %in% "HAB" + input$map_zoom 
-  # observe({
-  #   req(input$tab1 %in% "SER")
-  #   browser()
-  #   })
+  
+  
   observe({
     
     req(input$tab1 %in% "SER")
@@ -606,9 +575,11 @@ server <- function(input, output, session) {
     req(input$map_zoom)
     req(input$HAB_sel)
     
-    if(input$tab1 %in% "HAB" & 
-       input$map_zoom >= 9 & 
+    if(input$tab1 %in% "HAB" && 
+       input$map_zoom >= 9 && 
        nrow(RADIO_r()) > 0){
+      
+      cat(as.character(Sys.time()), "MAP_HAB", "\n")
       
       if(exists("nom") && nom != input$HAB_sel){
         leafletProxy("map") %>%
@@ -642,8 +613,7 @@ server <- function(input, output, session) {
           clearGroup("RAD") %>%
           clearGroup("DEF") %>%
           addRadio(data = r_aux, grupo = "RAD", 
-                   indicador = "indicador", PAL = "YlOrRd") # %>%
-          # showGroup("RAD")
+                   indicador = "indicador", PAL = "YlOrRd") 
         
       }else{
         # DEFICIT
@@ -681,7 +651,11 @@ server <- function(input, output, session) {
 ### Gráfico de densidad de variables -------------------------------------
 
   output$HAB_histograma1 <- renderPlot({
+    
+    cat(as.character(Sys.time()), "HIST_HAB1", "\n")
+    
       nom <- names(indic_HAB)[indic_HAB == input$HAB_sel]
+      
       
       if(input$HAB_sel != "H_HAC"){
         data.frame(v = RADIO_r()[[input$HAB_sel]] / RADIO_r()$Hogares2010 * 100) %>%
@@ -700,9 +674,14 @@ server <- function(input, output, session) {
   })
   
   output$HAB_histograma2 <- renderPlot({
+    
+    cat(as.character(Sys.time()), "HIST_HAB2", "\n")
+    
     RADIO_r() %>% 
+      st_drop_geometry() %>%
       select(Cuantitativo = x100H_CUANT, Cualitativo =  x100H_CUALI) %>%
-      pivot_longer(cols = c(Cuantitativo, Cualitativo)) %>%
+      pivot_longer(cols = c("Cuantitativo", "Cualitativo")) %>%
+      filter(!is.na(value)) %>%
       ggplot(aes(x = value, color = name)) + 
       geom_density() + 
       labs(color = "Déficit de Vivienda", 
@@ -715,6 +694,9 @@ server <- function(input, output, session) {
 ### Resumen Déficit -----------------------------------------------------------
   
   output$DEF_t <- renderTable({
+    
+    cat(as.character(Sys.time()), "RESUMEN_DEF", "\n")
+    
     DEMOG_r() %>%
       summarise(across(.cols = all_of(deficit), .fns = ~sum(.x, na.rm = T))) %>%
       pivot_longer(cols = everything( )) %>%
