@@ -4,7 +4,7 @@ server <- function(input, output, session) {
   
 ### Paneles UI ----------------------------------------------------------
   
-  # Servicios (SER) -----------------------------------------------------
+  # Servicios (SER) -----------------------------*
   
   # Cluster Sí/no
   cluster <- reactive({
@@ -23,9 +23,15 @@ server <- function(input, output, session) {
                       selected = if(input$act_heat) {"p_HEATSI"} else {"p_HEATNO"})
   })
   
-  # Demográfico (DEM) ----------------------------------------------------
+  # Hábitat (HAB) -----------------------------*
+  # Panel de selección de Hábitat (Déficit vs resto)
   
-  # Reactivo para pirámide
+  observeEvent(input$HAB_sel, {
+    updateTabsetPanel(inputId = "p_HAB", 
+                      selected = if(input$HAB_sel == "DEFICIT") {"p_DEFICIT"} else {"p_HABITAT"})
+  })
+  
+### Reactivo para pirámide poblacional (DEM) -----------------------------------------------
   
   PIRAMIDE_r <- reactive({
     cat(as.character(Sys.time()), "PIRAM_r_pre", "\n")
@@ -46,7 +52,7 @@ server <- function(input, output, session) {
     
   })
   
-  # Migración (MIG) ------------------------------------------------
+### Reactivo para torta en Migración (MIG) -------------------------------------
   
   MIGRA_r <- reactive({
     cat(as.character(Sys.time()), "MIGRA_r", "\n")
@@ -61,14 +67,6 @@ server <- function(input, output, session) {
       pivot_longer(cols = everything() ) %>%
       arrange(value)  %>%
       filter(name %in% input$MIG_sel)
-  })
-  
-  # Hábitat (HAB) -------------------------------------------------
-  # Panel de selección de Hábitat (Déficit vs resto)
-  
-  observeEvent(input$HAB_sel, {
-    updateTabsetPanel(inputId = "p_HAB", 
-                      selected = if(input$HAB_sel == "DEFICIT") {"p_DEFICIT"} else {"p_HABITAT"})
   })
   
 ### Selección de aglomerados --------------------------------------------------
@@ -138,16 +136,16 @@ server <- function(input, output, session) {
   # Envolvente de radios visibles
   # RADIO_r()
   
-  RADIO_env <- reactive({
-    cat(as.character(Sys.time()), "RADIO_env", "\n")
-    
-    req(RADIO_r())    
-    # ACA ESTABA EL ERROR
-
-    RADIO_r() %>%
-      summarise()
-    
-  })
+  # RADIO_env <- reactive({
+  #   cat(as.character(Sys.time()), "RADIO_env", "\n")
+  #   
+  #   req(RADIO_r())    
+  #   # ACA ESTABA EL ERROR
+  # 
+  #   RADIO_r() %>%
+  #     summarise()
+  #   
+  # })
   
   # Selección de base DEMOG (radios visibles)
   # limite()
@@ -179,9 +177,11 @@ server <- function(input, output, session) {
   # input$MIG_sel
   
   CEN_MIGRA_r <- reactive({
-    cat(as.character(Sys.time()), "CEN_MIGRA", "\n")
+    cat(as.character(Sys.time()), "CEN_MIGRA_r_pre", "\n")
     
     req(input$tab1 %in% c("MIG") & length(input$MIG_sel) > 0 )
+    
+    cat(as.character(Sys.time()), "CEN_MIGRA_r", "\n")
     
     CEN_r() %>%
       mutate(T_MIGRA = apply(st_drop_geometry(.[input$MIG_sel]), 1, sum),
@@ -202,7 +202,9 @@ server <- function(input, output, session) {
       )
   })
   
-# Mapa base ---------------------------------------------------------------
+# Panel: Cartografía -----------------------------------------------------------
+  
+# 0. Mapa base ---------------------------------------------------------------
   # POLIGONO()$AGLOMERADO
 
   output$map <- renderLeaflet({
@@ -232,7 +234,7 @@ server <- function(input, output, session) {
 
   # Municipios (POLIGONO()$MUNI)
   observe({
-    map_base(base = "MUNI", POLIG_BASE = POLIGONO(),
+    map_polig(base = "MUNI", POLIG_BASE = POLIGONO(),
              seleccion = input$zonas, fill = F,
              color = "black", opacity = 1)
 
@@ -240,14 +242,14 @@ server <- function(input, output, session) {
 
   # Barrios cerrados (POLIGONO()$COUNTRY)
   observe({
-    map_base(base = "COUNTRY", POLIG_BASE = POLIGONO(),
+    map_polig(base = "COUNTRY", POLIG_BASE = POLIGONO(),
              seleccion = input$zonas,
              color = "green")
   })
 
   # Barrios Populares (POLIGONO()$RENABAP)
   observe({
-    map_base(base = "RENABAP", POLIG_BASE = POLIGONO(),
+    map_polig(base = "RENABAP", POLIG_BASE = POLIGONO(),
              seleccion = input$zonas, color = "blue")
   })
 
@@ -261,8 +263,12 @@ server <- function(input, output, session) {
     
     if(input$tab1 %in% c("DEM", "MIG") && 
        input$map_zoom >= 9){
-      if(nrow(RADIO_env()) > 0){
-        leafletProxy("map", data = RADIO_env()) %>%
+      # if(nrow(RADIO_env()) > 0){
+        req(RADIO_r())
+      
+        RADIO_r() %>%
+          st_combine() %>%
+          leafletProxy("map", data = .) %>%
           clearGroup("ENV") %>%
           addPolygons(group = "ENV",
                       color = "azure1",
@@ -270,7 +276,7 @@ server <- function(input, output, session) {
                       noClip = T,
                       opacity = 0) %>%
           showGroup("ENV")
-        }
+        # }
     }else{
       leafletProxy("map") %>%
         clearGroup("ENV") 
@@ -328,7 +334,7 @@ server <- function(input, output, session) {
   # Servicios generales (SERVICIO()$General)
   
   observe({
-    sel_serv(base = "General",
+    map_serv(base = "General",
              seleccion = input$sel_infra, 
              lista = SERVICIO(), 
              cluster = cluster())
@@ -336,7 +342,7 @@ server <- function(input, output, session) {
 
   # Servicios Especiales (SERVICIO()$Especialidad)
   observe({
-    sel_serv(base = "Especialidad", 
+    map_serv(base = "Especialidad", 
              seleccion = input$sel_infra, 
              lista = SERVICIO(), 
              cluster = cluster())
@@ -347,7 +353,7 @@ server <- function(input, output, session) {
   
   # Escuelas Estatales/Sociales (SERVICIO()$E_PUB)
   observe({
-    sel_serv(base = "E_PUB", 
+    map_serv(base = "E_PUB", 
              seleccion = input$sel_infra, 
              lista = SERVICIO(),
              cluster = cluster())
@@ -355,7 +361,7 @@ server <- function(input, output, session) {
 
   # Escuelas Privadas (SERVICIO()$E_PRI)
   observe({
-    sel_serv(base = "E_PRI", 
+    map_serv(base = "E_PRI", 
              seleccion = input$sel_infra, 
              lista = SERVICIO(),
              cluster = cluster())
@@ -363,7 +369,7 @@ server <- function(input, output, session) {
 
   # Universidades (SERVICIO()$universidades)
   observe({
-    sel_serv(base = "universidades", 
+    map_serv(base = "universidades", 
              seleccion = input$sel_infra, 
              lista = SERVICIO(),
              cluster = cluster())
@@ -374,21 +380,21 @@ server <- function(input, output, session) {
 
   # Mercados de alimentos (SERVICIO()$mercado)
   observe({
-    sel_serv(base = "mercado", 
+    map_serv(base = "mercado", 
              seleccion = input$sel_infra, 
              lista = SERVICIO(),
              cluster = cluster())
   })
   # Financiero (SERVICIO()$financiero)
   observe({
-    sel_serv(base = "financiero", 
+    map_serv(base = "financiero", 
              seleccion = input$sel_infra, 
              lista = SERVICIO(),
              cluster = cluster())
   })
   # Policia (SERVICIO()$seguridad)
   observe({
-    sel_serv(base = "seguridad", 
+    map_serv(base = "seguridad", 
             seleccion = input$sel_infra, 
             lista = SERVICIO(),
             cluster = cluster())
@@ -400,7 +406,7 @@ server <- function(input, output, session) {
     
     req(input$sel_HEAT)
 
-    heat_map(base = input$sel_HEAT, 
+    map_heat(base = input$sel_HEAT, 
              lista = SERVICIO(),
              calor = input$act_heat,
              radio = input$radio,
@@ -704,4 +710,96 @@ server <- function(input, output, session) {
              Por = paste(round(value / sum(value) * 100, 1), "%"),
              value = NULL)
   }, digits = 0, colnames= 0)
+# Panel: Evolución -------------------------------------------------------------
+
+# 1. Gráfico -------------------------------------------------------------------
+
+  output$EPH_plot <- renderPlot({
+
+    req(input$EPH_aglo, input$tab_gral == "Evolución", input$EPH_ind)
+    
+    EPH_A <- map(EPH, filter, LAB %in% input$EPH_aglo)
+    
+    if (input$EPH_ind == "ING"){
+      p <- EPH_A$H_Q %>%
+        # Datos por Quintil
+        ggplot() +
+        geom_point(aes(x = ONDA, y = IPC_Mediana, color = ADECCFR2), alpha = 0.5) +
+        geom_line(aes(x = ONDA, y = IPC_Mediana,
+                      group = ADECCFR2, color = ADECCFR2),
+                  alpha = 0.7, linetype = 2) +
+        #Datos de Mediana
+        geom_point(data = EPH_A$H_A, aes(x = ONDA, y = IPC_Mediana),
+                   alpha = 0.7) +
+        geom_line(data = EPH_A$H_A, aes(x = ONDA, y = IPC_Mediana, group = LAB),
+                  alpha = 0.7) +
+        # General
+        scale_color_manual("Quintil IPC", breaks = 1:5,
+                           values = c("#BF3F3F", "#BF7F3F",
+                                      "#BFBF3F",
+                                      "#3FBF7F", "#3F7FBF"),
+                           labels = paste0(1:5, " Quintil")) +
+        scale_y_continuous("Ingreso Per Capita del Hogar") 
+    }
+    if (input$EPH_ind == "OCU"){
+      
+      p_base <- EPH_A$I %>%
+        ggplot() 
+      # Desocupación
+      p_base <- p_base + 
+        geom_point(aes(x = ONDA, y = T_DES, color = "Tasa de Desocupación"), 
+                  alpha = 0.7) +
+        geom_line(aes(x = ONDA, y = T_DES, group = LAB, color = "Tasa de Desocupación"), 
+                  alpha = 0.7, linetype = 2)
+      
+      # Actividad
+      p_base <- p_base + 
+        geom_point(aes(x = ONDA, y = T_ACT-0.15, color = "Tasa de Actividad"), 
+                   alpha = 0.7) +
+        geom_line(aes(x = ONDA, y = T_ACT-0.15, group = LAB, color = "Tasa de Actividad"), 
+                  alpha = 0.7, linetype = 2)
+      
+      # Actividad
+      p_base <- p_base + 
+        geom_point(aes(x = ONDA, y = T_EMP-0.15, color = "Tasa de Actividad"), 
+                   color = "darkgreen", alpha = 0.7) +
+        geom_line(aes(x = ONDA, y = T_EMP-0.15, group = LAB, color = "Tasa de Empleo"), 
+                  alpha = 0.7, linetype = 2)
+      
+      # Estético
+      p <- p_base +
+        scale_color_discrete("Indicador") +
+        scale_y_continuous("Tasa de Desocupación (%)",
+                           labels = scales::percent_format(accuracy = 1), 
+                           sec.axis =  sec_axis(name = "Tasa de Empleo y Actividad (%)",
+                                                trans = ~ . + 0.15, 
+                                                labels = scales::percent_format(accuracy = 1))
+                             
+                           ) 
+    }
+    if (input$EPH_ind == "SAL"){
+      
+      p <- EPH_A$I %>%
+        ggplot() + 
+        geom_point(aes(x = ONDA, y = T_SAL), 
+                   color = "darkgreen", alpha = 0.7) +
+        geom_line(aes(x = ONDA, y = T_SAL, group = LAB), 
+                  color = "darkgreen", alpha = 0.7, linetype = 2) +
+        scale_y_continuous("% de Personas sin cobertura de salud privada",
+                           labels = scales::percent_format(accuracy = 1))
+    }
+    p +
+      labs(x = "Relevamiento EPH") +
+      # Inicio ASPO
+      geom_vline(xintercept = "2T-2020", linetype = 2,
+                 color = "tomato3", alpha = 0.3) +
+      # Facet
+      facet_wrap(~LAB, scales = "fixed") +
+      # Theme
+      theme_minimal() +
+      theme(axis.text.x = element_text(size = 6, angle = 45),
+            axis.text.y = element_text(size = 6),
+            strip.text.x = element_text(size = 7), 
+            legend.position = "bottom") 
+  })
 }

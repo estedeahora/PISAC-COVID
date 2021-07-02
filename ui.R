@@ -1,5 +1,5 @@
-ui <- fluidPage(
-  tabsetPanel(
+ui <- fluidPage(theme = shinytheme("united"),
+  tabsetPanel(id = "tab_gral",
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
              fluidRow(
@@ -25,7 +25,7 @@ ui <- fluidPage(
              fluidRow(
                sidebarLayout(
                  # Panel de selección
-                 sidebarPanel(
+                 sidebarPanel(width = 4,
                    tabsetPanel(id = "tab1",
                                # Panel de servicios urbanos (SER)
                                tabPanel("Infraestructura", value = "SER",
@@ -159,17 +159,35 @@ ui <- fluidPage(
                #   )           
              )
     ),
-    tabPanel("Evolución", icon = icon("line-chart"),
-             pickerInput(
-               inputId = "EPH_aglo",
-               label = "Seleccione Aglomerados para mostrar",
-               choices = AGLO[-1],
-               options = list(
-                 `actions-box` = TRUE,
-                 `selected-text-format` = "count > 3"
+      tabPanel("Evolución", icon = icon("line-chart"),
+             
+             sidebarLayout(
+               sidebarPanel(
+                 pickerInput(
+                   inputId = "EPH_aglo",
+                   label = "Seleccione Aglomerados para mostrar",
+                   choices = unique(EPH$I$LAB),
+                   options = list(
+                     `actions-box` = TRUE,
+                     `selected-text-format` = "count > 3"
+                   ),
+                   multiple = TRUE
+                 ),
+                 pickerInput(
+                   inputId = "EPH_ind",
+                   # label = "",
+                   choices = indic_EPH,
+                   options = list(
+                     title = "Elija indicador")
+                 )
                ),
-               multiple = TRUE
+               
+               mainPanel(
+                 plotOutput("EPH_plot")
+                 
+               )
              )
+             
     ),
     tabPanel("Proyecto",
              h1("Acerca del proyecto"),

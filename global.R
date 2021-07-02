@@ -6,6 +6,7 @@ library(tidyverse)
 library(leaflet)
 library(leaflet.extras)
 library(shinyWidgets)
+library(shinythemes)
 
 # Carga de Datos ----------------------------------------------------------
 
@@ -16,58 +17,35 @@ if (!exists("MAPA")) {
   load("data/_data.RData")
 
   ref <- read.csv("data/ref.csv")
-  # leaflet() %>%
-  #   addTiles() %>%
-  #   addPolygons(fillOpacity = 0.5, opacity = 0,
-  #               fillColor = ~colorQuantile("YlOrRd", SALUD_no, n = 9)(SALUD_no),
-  #               popup = ~paste0(departamen, "<br>", ESTATAL, " (", round(SALUD_no, 1), "%)" ))
+
+  names(EPH) <- c("I", "H_A", "H_Q")
+  EPH$I <- EPH$I %>% 
+    mutate(across(.cols = starts_with("T_"),
+                  .fns = ~.x/100 ))
+  
+  
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
+  
   INFRAEST <- INFRA
   rm(INFRA)
 }
 
 # Armar variables para selectores -------------------------------------
 
-VARS <-  c("Personas por vivienda" = "VIV")
 
 AGLO <- c("Seleccionar (Todos)", unique(MAPA$AGLOMERADO$aglo))
 
+poligono <-  c('Municipio' = "MUNI",
+               'Barrio Popular' = "RENABAP",
+               'Country' = "COUNTRY")
+
+# Escala para Pirámide
 l <- c(paste(seq(0, 90, by = 5),
              seq(5, 95, by = 5), sep = "-"),
        "+95")
 
-paises <- DEMOG %>%
-  select('América Otros':'Asia y Oceanía') %>% names()
-paises <- list(Sudamericanos = paises[c(2:4, 6:7, 9, 1)],
-               Otros = paises[c(5, 10, 8)])
-
-deficit <- DEMOG %>%
-  select('Sin deficit':'Vivienda con Núcleo Allegado Interno + Mejora') %>% names()
-
-indic_POB <- c('Edad Promedio' = "EDAD",
-               'Tasa de Juventud' = "t_JUV",
-               'Tasa de Envejecimiento' = "t_ENV",
-               '% de Personas Sin Estudios Secundarios Completos' = "SEC_p",
-               '% de Personas Con Estudios Universitarios Completos' = "SUP_p",
-               '% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUD"
-               )
-
-indic_HAB <- c('Déficit de Vivienda por hogares' = "DEFICIT",
-               'Promedio de Hacinamiento (Personas por cuarto)' = "H_HAC",
-               '% de Hogares con NBI' = "H_NBI",
-               '% de Hogares sin agua potable' = "H_AGUA",
-               '% de Hogares sin desague cloacal/pozo' = "H_CLOACA",
-               '% de Hogares en Vivienda sin recolección de basura' = "BASURA",
-               '% de Hogares en Vivienda sin acceso a transporte público (300m)' = "TRANSPORTE",
-               '% de Hogares en Vivienda sin pavimento' = "PAVIMENTO",
-               '% de Hogares en Vivienda sin alumbrado público' = "ALUMBRADO" )
-
-poligono <-  c('Municipio' = "MUNI",
-               # 'Departamento' = "DEPTO",
-               'Barrio Popular' = "RENABAP",
-               'Country' = "COUNTRY")
-
+# Selectores SER
 infraestructura <- c('Salud General' = "General",
                      'Salud Especialidades' = "Especialidad",
                      'Escuelas Estatales/Gestión Social' = "E_PUB",
@@ -76,6 +54,44 @@ infraestructura <- c('Salud General' = "General",
                      'Venta de Alimentos' = "mercado",
                      'Sevicios Financieros' = "financiero",
                      'Seccional Policial' = "seguridad")
+
+
+# Selectores POB
+indic_POB <- c('Edad Promedio' = "EDAD",
+               'Tasa de Juventud' = "t_JUV",
+               'Tasa de Envejecimiento' = "t_ENV",
+               '% de Personas Sin Estudios Secundarios Completos' = "SEC_p",
+               '% de Personas Con Estudios Universitarios Completos' = "SUP_p",
+               '% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUD")
+
+# Selectores MIG
+paises <- DEMOG %>%
+  select('América Otros':'Asia y Oceanía') %>% names()
+paises <- list(Sudamericanos = paises[c(2:4, 6:7, 9, 1)],
+               Otros = paises[c(5, 10, 8)])
+
+# Selectores HAB-DEF
+indic_HAB <- c('Déficit de Vivienda por hogares' = "DEFICIT",
+               'Promedio de Hacinamiento (Personas por cuarto)' = "H_HAC",
+               '% de Hogares con NBI' = "H_NBI",
+               '% de Hogares sin agua potable' = "H_AGUA",
+               '% de Hogares sin desague cloacal/pozo' = "H_CLOACA",
+               '% de Hogares en Vivienda sin recolección de basura' = "BASURA",
+               '% de Hogares en Vivienda sin acceso a transporte público (300m)' = "TRANSPORTE",
+               '% de Hogares en Vivienda sin pavimento' = "PAVIMENTO",
+               '% de Hogares en Vivienda sin alumbrado público' = "ALUMBRADO")
+
+deficit <- DEMOG %>%
+  select('Sin deficit':'Vivienda con Núcleo Allegado Interno + Mejora') %>% names()
+
+# VARS <-  c("Personas por vivienda" = "VIV")
+
+# Selectores EPH
+
+indic_EPH <- c('Ingreso de los Hogares' = "ING",
+               '% de Personas sin cobertura de salud privada' = "SAL",
+               'Indicadores de Ocupación' = "OCU")
+
 
 # Bases auxiliares --------------------------------------------------------
 
@@ -103,7 +119,6 @@ resumen <- rbind(resumen,
                 c("Total Aglomerados", apply(resumen[-1], 2, sum ))) %>%
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
-
 
 # Íconos ------------------------------------------------------------------
 
@@ -151,9 +166,8 @@ icon_lista <- iconList(
 # )
 
 # Funciones ---------------------------------------------------------------
-
-
-map_base <- function(base = c("MUNI", "COUNTRY", "RENABAP"),
+# BORRAR
+map_polig <- function(base = c("MUNI", "COUNTRY", "RENABAP"),
                      grupo = base,
                      color = "black", opacity = 0, fill = T, weight = 1,
                      highlightOptions = NULL,
@@ -178,7 +192,7 @@ map_base <- function(base = c("MUNI", "COUNTRY", "RENABAP"),
   }
 }
 
-sel_serv <- function(lista, base, seleccion,
+map_serv <- function(lista, base, seleccion,
                      servicio = base, grupo = base,
                      # show.calor = T,
                      cluster = F
@@ -201,7 +215,7 @@ sel_serv <- function(lista, base, seleccion,
   }
 }
 
-heat_map <- function(lista, base,
+map_heat <- function(lista, base,
                      servicio = base,
                      grupo = "heat",
                      seleccion = seleccion,
@@ -223,9 +237,8 @@ heat_map <- function(lista, base,
 
 }
 
-
 addRadio <- function(map, data, grupo,
-                     indicador, 
+                     indicador,
                      # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
                      PAL = "YlOrRd" ){
 
@@ -251,8 +264,9 @@ addRadio <- function(map, data, grupo,
       showGroup(group = grupo)
 
   }else{
+    # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
     map %>%
-      addPolygons(data = data, group = grupo, smoothFactor = 0.5,
+      addPolygons(data = rbind(data, data), group = grupo, smoothFactor = 0.5,
                   popup = ~cuadro,
                   opacity = 1.0, color = "#BDBDBD", weight = 0.3,
                   # fillOpacity = ~VAR_FILL,
