@@ -35,16 +35,21 @@ if (!exists("MAPA")) {
 
 
 AGLO <- c("Seleccionar (Todos)", unique(MAPA$AGLOMERADO$aglo))
+ 
+poligono <- tibble::tribble(
+  ~ base,      ~ color,      ~ fill,     ~opacity,
+  "MUNI",      "black",      F,          1,
+  "RENABAP",   "blue",       T,          0,
+  "COUNTRY",   "green",      T,          0)
 
-poligono <-  c('Municipio' = "MUNI",
-               'Barrio Popular' = "RENABAP",
-               'Country' = "COUNTRY")
+var_polig <-  poligono$base
+names(var_polig) <- c('Municipio', 'Barrio Popular', 'Country')
 
 # Escala para Pirámide
 l <- c(paste(seq(0, 90, by = 5),
              seq(5, 95, by = 5), sep = "-"),
        "+95")
-
+ 
 # Selectores SER
 infraestructura <- c('Salud General' = "General",
                      'Salud Especialidades' = "Especialidad",
@@ -54,7 +59,6 @@ infraestructura <- c('Salud General' = "General",
                      'Venta de Alimentos' = "mercado",
                      'Sevicios Financieros' = "financiero",
                      'Seccional Policial' = "seguridad")
-
 
 # Selectores POB
 indic_POB <- c('Edad Promedio' = "EDAD",
@@ -166,7 +170,9 @@ icon_lista <- iconList(
 # )
 
 # Funciones ---------------------------------------------------------------
-# BORRAR
+# Pasar a R/
+# map(paste0("R/", list.files("R/")), source)
+
 map_polig <- function(base = c("MUNI", "COUNTRY", "RENABAP"),
                      grupo = base,
                      color = "black", opacity = 0, fill = T, weight = 1,
@@ -200,7 +206,7 @@ map_serv <- function(lista, base, seleccion,
 
   if(servicio %in% seleccion){
     leafletProxy("map",
-                      data = lista[[base]]) %>%
+                 data = lista[[base]]) %>%
       clearGroup(grupo) %>%
         addMarkers(group = grupo,
                    popup = ~cuadro,

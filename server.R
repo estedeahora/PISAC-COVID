@@ -232,26 +232,32 @@ server <- function(input, output, session) {
 ### Mapa de zonas/territorios
   # POLIGONO()
 
-  # Municipios (POLIGONO()$MUNI)
   observe({
-    map_polig(base = "MUNI", POLIG_BASE = POLIGONO(),
-             seleccion = input$zonas, fill = F,
-             color = "black", opacity = 1)
-
+    pmap(poligono, map_polig, 
+         POLIG_BASE = POLIGONO(), seleccion = input$zonas)
   })
-
-  # Barrios cerrados (POLIGONO()$COUNTRY)
-  observe({
-    map_polig(base = "COUNTRY", POLIG_BASE = POLIGONO(),
-             seleccion = input$zonas,
-             color = "green")
-  })
-
-  # Barrios Populares (POLIGONO()$RENABAP)
-  observe({
-    map_polig(base = "RENABAP", POLIG_BASE = POLIGONO(),
-             seleccion = input$zonas, color = "blue")
-  })
+  
+  # # Municipios (POLIGONO()$MUNI)
+  # observe({
+  #   map_polig(base = "MUNI", POLIG_BASE = POLIGONO(),
+  #            seleccion = input$zonas, fill = F,
+  #            color = "black", opacity = 1)
+  # 
+  # })
+  # 
+  # # Barrios cerrados (POLIGONO()$COUNTRY)
+  # observe({
+  #   map_polig(base = "COUNTRY", POLIG_BASE = POLIGONO(),
+  #            seleccion = input$zonas,
+  #            color = "green")
+  # })
+  # 
+  # # Barrios Populares (POLIGONO()$RENABAP)
+  # observe({
+  #   map_polig(base = "RENABAP", POLIG_BASE = POLIGONO(),
+  #            seleccion = input$zonas, 
+  #            color = "blue")
+  # })
 
 ### Mapa con envolvente de radios visibles 
   # input$tab1  %in% c("DEM", "MIG") +  input$map_zoom >= 9 +  RADIO_env()
@@ -328,77 +334,87 @@ server <- function(input, output, session) {
   
 # 1. Infraestructura urbana (SERVICIO())  -------------------------
 
-### Salud ---------------------------------------------------------
-  # input$sel_infra 
-  
-  # Servicios generales (SERVICIO()$General)
   
   observe({
-    map_serv(base = "General",
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(), 
-             cluster = cluster())
+    map(names(INFRAEST), map_serv,
+        seleccion = input$sel_infra, 
+        lista = SERVICIO(), cluster = cluster())
+    
   })
-
-  # Servicios Especiales (SERVICIO()$Especialidad)
-  observe({
-    map_serv(base = "Especialidad", 
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(), 
-             cluster = cluster())
-  })
-
-### Educación -----------------------------------------------------
-  # input$sel_infra
   
-  # Escuelas Estatales/Sociales (SERVICIO()$E_PUB)
-  observe({
-    map_serv(base = "E_PUB", 
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(),
-             cluster = cluster())
-  })
-
-  # Escuelas Privadas (SERVICIO()$E_PRI)
-  observe({
-    map_serv(base = "E_PRI", 
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(),
-             cluster = cluster())
-  })
-
-  # Universidades (SERVICIO()$universidades)
-  observe({
-    map_serv(base = "universidades", 
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(),
-             cluster = cluster())
-  })
-
-### Servicios urbanos ---------------------------------------------
-  # input$sel_infra
-
-  # Mercados de alimentos (SERVICIO()$mercado)
-  observe({
-    map_serv(base = "mercado", 
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(),
-             cluster = cluster())
-  })
-  # Financiero (SERVICIO()$financiero)
-  observe({
-    map_serv(base = "financiero", 
-             seleccion = input$sel_infra, 
-             lista = SERVICIO(),
-             cluster = cluster())
-  })
-  # Policia (SERVICIO()$seguridad)
-  observe({
-    map_serv(base = "seguridad", 
-            seleccion = input$sel_infra, 
-            lista = SERVICIO(),
-            cluster = cluster())
-  })
+# Borrar todo servicios
+  
+# ### Salud ---------------------------------------------------------
+#   # input$sel_infra 
+#   
+#   # Servicios generales (SERVICIO()$General)
+#   
+#   observe({
+#     map_serv(base = "General",
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(), 
+#              cluster = cluster())
+#   })
+# 
+#   # Servicios Especiales (SERVICIO()$Especialidad)
+#   observe({
+#     map_serv(base = "Especialidad", 
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(), 
+#              cluster = cluster())
+#   })
+# 
+# ### Educación -----------------------------------------------------
+#   # input$sel_infra
+#   
+#   # Escuelas Estatales/Sociales (SERVICIO()$E_PUB)
+#   observe({
+#     map_serv(base = "E_PUB", 
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(),
+#              cluster = cluster())
+#   })
+# 
+#   # Escuelas Privadas (SERVICIO()$E_PRI)
+#   observe({
+#     map_serv(base = "E_PRI", 
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(),
+#              cluster = cluster())
+#   })
+# 
+#   # Universidades (SERVICIO()$universidades)
+#   observe({
+#     map_serv(base = "universidades", 
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(),
+#              cluster = cluster())
+#   })
+# 
+# ### Servicios urbanos ---------------------------------------------
+#   # input$sel_infra
+# 
+#   # Mercados de alimentos (SERVICIO()$mercado)
+#   observe({
+#     map_serv(base = "mercado", 
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(),
+#              cluster = cluster())
+#   })
+#   # Financiero (SERVICIO()$financiero)
+#   observe({
+#     map_serv(base = "financiero", 
+#              seleccion = input$sel_infra, 
+#              lista = SERVICIO(),
+#              cluster = cluster())
+#   })
+#   # Policia (SERVICIO()$seguridad)
+#   observe({
+#     map_serv(base = "seguridad", 
+#             seleccion = input$sel_infra, 
+#             lista = SERVICIO(),
+#             cluster = cluster())
+#   })
 
 ### Heat map -------------------------------------------------------
   

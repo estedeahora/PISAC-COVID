@@ -3,7 +3,7 @@ ui <- fluidPage(theme = shinytheme("united"),
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
              fluidRow(
-               column(width = 4,
+               column(width = 3,
                       fluidRow(
                         column(width = 12,
                                selectInput("aglo", "Elija el Aglomerado",
@@ -13,7 +13,7 @@ ui <- fluidPage(theme = shinytheme("united"),
                       fluidRow(
                         column(width = 12,
                                checkboxGroupInput("zonas", "Zonas urbanas",
-                                                  poligono, inline = T)
+                                                  var_polig, inline = T)
                         )
                       ),
                ),
@@ -25,7 +25,7 @@ ui <- fluidPage(theme = shinytheme("united"),
              fluidRow(
                sidebarLayout(
                  # Panel de selección
-                 sidebarPanel(width = 4,
+                 sidebarPanel(width = 3,
                    tabsetPanel(id = "tab1",
                                # Panel de servicios urbanos (SER)
                                tabPanel("Infraestructura", value = "SER",
@@ -44,12 +44,16 @@ ui <- fluidPage(theme = shinytheme("united"),
                                           multiple = TRUE
                                         ),
                                         
-                                        switchInput(inputId = "clu", label = "Clusters", value = TRUE, labelWidth = "50",
-                                                    onLabel = "Sí",  offLabel = "No", size = "mini"),
+                                        switchInput(inputId = "clu", label = "Clusters", 
+                                                    value = TRUE, labelWidth = "50",
+                                                    onLabel = "Sí",  offLabel = "No", 
+                                                    onStatus = "danger", size = "mini"),
                                         HTML("<br>"),
                                         strong("Mapa de calor"),
-                                        switchInput(inputId = "act_heat", label = "Heatmap", value = FALSE,
-                                                    onLabel = "Sí",  offLabel = "No", size = "mini", inline = F),
+                                        switchInput(inputId = "act_heat", 
+                                                    label = "Heatmap", value = FALSE,
+                                                    onLabel = "Sí",  offLabel = "No", 
+                                                    size = "mini", onStatus = "danger"),
                                         tabsetPanel(
                                           id = "p_HEAT",
                                           type = "hidden",
@@ -136,13 +140,13 @@ ui <- fluidPage(theme = shinytheme("united"),
                    ),
                  ),
                  # Mapa principal
-                 mainPanel(width = 7,
-                           leafletOutput("map",  height = 600)
+                 mainPanel(width = 8,
+                           leafletOutput("map", height = 600)
                  )
                )
              ),
              fluidRow(
-               column(width = 4,
+               column(width = 3,
                       htmlOutput("desc")
                )
                #   column(width = 8, 
@@ -183,20 +187,29 @@ ui <- fluidPage(theme = shinytheme("united"),
                ),
                
                mainPanel(
-                 plotOutput("EPH_plot")
+                 plotOutput("EPH_plot", height = 600)
                  
                )
              )
              
     ),
     tabPanel("Proyecto",
-             h1("Acerca del proyecto"),
-             "Esta aplicación fue desarrollada en el marco del proyecto PISAC-COVID, coordinado por María Mercedes Di Virgilio...",
-             # h1("Nota metodológica"),
-             # "Los datos presentados fueron extraídos del CENSO 2010 y la EPH. A su vez, se utilizó cartografía proporcionada por IGN y el Ministerio de Educación para la localización de los establecimientos estatales de salud y las escuelas, respectivamente",
-             h2("Cómo citar..."),
-             HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'www'> https://www....dsa.com </a>"),
-             h2("Descargar datos")
+             column(width = 5,
+               h1("Acerca del proyecto"),
+               "Esta aplicación fue desarrollada en el marco del proyecto PISAC-COVID, coordinado por María Mercedes Di Virgilio...",
+               # h1("Nota metodológica"),
+               # "Los datos presentados fueron extraídos del CENSO 2010 y la EPH. A su vez, se utilizó cartografía proporcionada por IGN y el Ministerio de Educación para la localización de los establecimientos estatales de salud y las escuelas, respectivamente",
+               h2("Cómo citar..."),
+               HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'www'> https://www....dsa.com </a>"),
+               HTML("<br> <br><p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")  
+               
+               
+             ),
+             column(width = 2),
+             column(width = 3,
+                    h2("Descargar datos")
+             )
+             
     )
   )
 )
