@@ -73,38 +73,66 @@ ui <- fluidPage(theme = shinytheme("united"),
                                           )
                                         )
                                ),
-                               # Panel de datos demográfico
+                               # Panel de datos demográficos
+                               # navbarMenu("Demográfico", #id = "p_DEM",
+                               #            icon = icon("group"),
+                               # Usar botones
                                tabPanel("Demográfico", value = "DEM",
-                                        icon = icon("align-center", lib = "glyphicon"),
-                                        plotOutput("piramide")
-                               ),
-                               # Panel de Variables para población
-                               tabPanel("Población", value = "POB",
                                         icon = icon("group"),
-                                        selectInput("POB_sel", "Elija indicador", choices = indic_POB),
-                                        # sliderInput("lim", "", value = c(0, 100), min = 0, max = 100),
-                                        plotOutput("POB_histograma")
-                               ),
-                               # Panel de Migración
-                               tabPanel("Migración", value = "MIG",
-                                        icon = icon("flag"),
-                                        pickerInput(
-                                          inputId = "MIG_sel",
-                                          label = "Seleccion e grupos migrantes",
-                                          choices = paises,
-                                          selected = unname(unlist(paises)),
-                                          options = list(
-                                            `actions-box` = TRUE,
-                                            `selected-text-format` = "count > 3"
-                                          ),
-                                          multiple = TRUE
-                                        ),
-                                        plotOutput("migrantes")
                                         
+                                        radioGroupButtons(
+                                          inputId = "DEM_ch",
+                                          label = "", selected = "PIR",
+                                          choices = c("<i class='fa fa-align-center'> Pirámide </i>" = "PIR",
+                                                      "<i class='fa fa-user'> Población </i>" = "POB",
+                                                      "<i class='fa fa-flag'> Migración </i>" = "MIG"),
+                                          justified = TRUE,
+                                          checkIcon = list(
+                                            yes = icon("ok",  style = "color: Coral",
+                                                       lib = "glyphicon"))),
+                                        tabsetPanel(
+                                          id = "p_DEM",
+                                          type = "hidden",
+                                          # Sub Panel de Pirámide de población
+                                          tabPanel("Pirámide", value = "PIR",
+                                                   # icon = icon("align-center", lib = "glyphicon"),
+                                                   plotOutput("piramide")
+                                          ),
+                                          # Sub Panel de Variables para población
+                                          tabPanel("Población", value = "POB",
+                                                   # icon = icon("user"),
+                                                   selectInput("POB_sel", "Elija indicador", choices = indic_POB),
+                                                   # sliderInput("lim", "", value = c(0, 100), min = 0, max = 100),
+                                                   plotOutput("POB_histograma")
+                                          ),
+                                          # Sub Panel de Migración
+                                          tabPanel("Migración", value = "MIG",
+                                                   # icon = icon("flag"),
+                                                   pickerInput(
+                                                     inputId = "MIG_sel",
+                                                     label = "Seleccion e grupos migrantes",
+                                                     choices = paises,
+                                                     selected = unname(unlist(paises)),
+                                                     options = list(
+                                                       `actions-box` = TRUE,
+                                                       `selected-text-format` = "count > 3"
+                                                     ),
+                                                     multiple = TRUE
+                                                   ),
+                                                   plotOutput("migrantes")
+                                                   
+                                          )
+                                        )
+                               ),
+                               # Panel de Salud
+                               tabPanel("Salud", value = "SAL",
+                                        icon = icon("stethoscope"),
+                                        selectInput("SAL_sel", "Elija indicador", choices = indic_SAL),
+                                        plotOutput("SAL_histograma")
                                ),
                                # Panel de Hábitat
                                tabPanel("Hábitat", value = "HAB",
-                                        icon = icon("home"),
+                                        icon = icon("city"),
                                         selectInput("HAB_sel", "Elija un indicador", choices = indic_HAB),
                                         # tableOutput("resumen_hab"),
                                         tabsetPanel(
@@ -118,9 +146,9 @@ ui <- fluidPage(theme = shinytheme("united"),
                                                                      "Mixto" = "MIXTO",
                                                                      "Cuanlitativo" = "CUALI"),
                                                          justified = TRUE,
-                                                         status = "primary",
+                                                         # status = "primary",
                                                          checkIcon = list(
-                                                           yes = icon("ok",  style = "color: steelblue",
+                                                           yes = icon("ok",  style = "color: Coral",
                                                                       lib = "glyphicon"))),
                                                        tabsetPanel(
                                                          tabPanel("Tabla",
@@ -136,7 +164,11 @@ ui <- fluidPage(theme = shinytheme("united"),
                                           ) 
                                         ),
                                         
-                               )
+                               ),
+                               # Panel de Movilidad
+                               tabPanel("Movilidad", value = "MOV",
+                                        icon = icon("bus")
+                                        )
                    ),
                  ),
                  # Mapa principal
@@ -191,23 +223,20 @@ ui <- fluidPage(theme = shinytheme("united"),
                  
                )
              )
-             
     ),
     tabPanel("Proyecto",
              column(width = 5,
                h1("Acerca del proyecto"),
                "Esta aplicación fue desarrollada en el marco del proyecto PISAC-COVID, coordinado por María Mercedes Di Virgilio...",
-               # h1("Nota metodológica"),
-               # "Los datos presentados fueron extraídos del CENSO 2010 y la EPH. A su vez, se utilizó cartografía proporcionada por IGN y el Ministerio de Educación para la localización de los establecimientos estatales de salud y las escuelas, respectivamente",
                h2("Cómo citar..."),
                HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'www'> https://www....dsa.com </a>"),
-               HTML("<br> <br><p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")  
-               
-               
+               HTML("<br> <br><p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")
              ),
              column(width = 2),
-             column(width = 3,
-                    h2("Descargar datos")
+             column(width = 3, 
+                    h2("Descargar datos"),
+                    HTML("<br>INACTIVO<br>"),
+                    downloadButton("down", label = "Descarga")
              )
              
     )

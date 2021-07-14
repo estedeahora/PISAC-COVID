@@ -23,6 +23,15 @@ server <- function(input, output, session) {
                       selected = if(input$act_heat) {"p_HEATSI"} else {"p_HEATNO"})
   })
   
+  # Población (POB) -----------------------------*
+  # Panel de selección de Población (Pirámide + Indicadores + Migración)
+  
+  observeEvent(input$DEM_ch, {
+    updateTabsetPanel(inputId = "p_DEM", 
+                      selected = input$DEM_ch)
+  })
+  
+  
   # Hábitat (HAB) -----------------------------*
   # Panel de selección de Hábitat (Déficit vs resto)
   
@@ -35,7 +44,7 @@ server <- function(input, output, session) {
   
   PIRAMIDE_r <- reactive({
     cat(as.character(Sys.time()), "PIRAM_r_pre", "\n")
-    req(input$tab1 %in% c("DEM"))
+    req(input$p_DEM %in% c("PIR"))
     cat(as.character(Sys.time()), "PIRAM_r", "\n")
     
     DEMOG_r() %>%
@@ -57,7 +66,7 @@ server <- function(input, output, session) {
   MIGRA_r <- reactive({
     cat(as.character(Sys.time()), "MIGRA_r", "\n")
     
-    req(input$tab1 %in% c("MIG"))
+    req(input$p_DEM %in% c("MIG"))
     
     DEMOG_r() %>%
       select(ID, eph_aglome, aglo, PERSONAS, MIGRANTE,
@@ -104,7 +113,7 @@ server <- function(input, output, session) {
   
   limite <- reactive({
     
-    req(input$tab1 %in% c("DEM", "POB", "MIG", "HAB"))
+    req(input$tab1 %in% c("DEM", "HAB", "MOV", "SAL"))
     req(input$map_bounds)
     
     b <- input$map_bounds
@@ -179,7 +188,7 @@ server <- function(input, output, session) {
   CEN_MIGRA_r <- reactive({
     cat(as.character(Sys.time()), "CEN_MIGRA_r_pre", "\n")
     
-    req(input$tab1 %in% c("MIG") & length(input$MIG_sel) > 0 )
+    req(input$p_DEM %in% c("MIG") & length(input$MIG_sel) > 0 )
     
     cat(as.character(Sys.time()), "CEN_MIGRA_r", "\n")
     
@@ -227,7 +236,7 @@ server <- function(input, output, session) {
                   opacity = 0.2)
   })
 
-### Mapas suplementarios de territorios y envolventes ---------------------------
+### Mapas suplementarios de territorios ---------------------------
   
 ### Mapa de zonas/territorios
   # POLIGONO()
@@ -235,58 +244,6 @@ server <- function(input, output, session) {
   observe({
     pmap(poligono, map_polig, 
          POLIG_BASE = POLIGONO(), seleccion = input$zonas)
-  })
-  
-  # # Municipios (POLIGONO()$MUNI)
-  # observe({
-  #   map_polig(base = "MUNI", POLIG_BASE = POLIGONO(),
-  #            seleccion = input$zonas, fill = F,
-  #            color = "black", opacity = 1)
-  # 
-  # })
-  # 
-  # # Barrios cerrados (POLIGONO()$COUNTRY)
-  # observe({
-  #   map_polig(base = "COUNTRY", POLIG_BASE = POLIGONO(),
-  #            seleccion = input$zonas,
-  #            color = "green")
-  # })
-  # 
-  # # Barrios Populares (POLIGONO()$RENABAP)
-  # observe({
-  #   map_polig(base = "RENABAP", POLIG_BASE = POLIGONO(),
-  #            seleccion = input$zonas, 
-  #            color = "blue")
-  # })
-
-### Mapa con envolvente de radios visibles 
-  # input$tab1  %in% c("DEM", "MIG") +  input$map_zoom >= 9 +  RADIO_env()
-  
-  observe({
-    
-    # req(nrow(RADIO_env()))
-    cat(as.character(Sys.time()), "MAPA_ENV", "\n")
-    
-    if(input$tab1 %in% c("DEM", "MIG") && 
-       input$map_zoom >= 9){
-      # if(nrow(RADIO_env()) > 0){
-        req(RADIO_r())
-      
-        RADIO_r() %>%
-          st_combine() %>%
-          leafletProxy("map", data = .) %>%
-          clearGroup("ENV") %>%
-          addPolygons(group = "ENV",
-                      color = "azure1",
-                      fill = "azure1",
-                      noClip = T,
-                      opacity = 0) %>%
-          showGroup("ENV")
-        # }
-    }else{
-      leafletProxy("map") %>%
-        clearGroup("ENV") 
-    }
   })
   
 ### Descripción de indicadores -------------------------------------------------
@@ -334,87 +291,12 @@ server <- function(input, output, session) {
   
 # 1. Infraestructura urbana (SERVICIO())  -------------------------
 
-  
   observe({
     map(names(INFRAEST), map_serv,
         seleccion = input$sel_infra, 
         lista = SERVICIO(), cluster = cluster())
     
   })
-  
-# Borrar todo servicios
-  
-# ### Salud ---------------------------------------------------------
-#   # input$sel_infra 
-#   
-#   # Servicios generales (SERVICIO()$General)
-#   
-#   observe({
-#     map_serv(base = "General",
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(), 
-#              cluster = cluster())
-#   })
-# 
-#   # Servicios Especiales (SERVICIO()$Especialidad)
-#   observe({
-#     map_serv(base = "Especialidad", 
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(), 
-#              cluster = cluster())
-#   })
-# 
-# ### Educación -----------------------------------------------------
-#   # input$sel_infra
-#   
-#   # Escuelas Estatales/Sociales (SERVICIO()$E_PUB)
-#   observe({
-#     map_serv(base = "E_PUB", 
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(),
-#              cluster = cluster())
-#   })
-# 
-#   # Escuelas Privadas (SERVICIO()$E_PRI)
-#   observe({
-#     map_serv(base = "E_PRI", 
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(),
-#              cluster = cluster())
-#   })
-# 
-#   # Universidades (SERVICIO()$universidades)
-#   observe({
-#     map_serv(base = "universidades", 
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(),
-#              cluster = cluster())
-#   })
-# 
-# ### Servicios urbanos ---------------------------------------------
-#   # input$sel_infra
-# 
-#   # Mercados de alimentos (SERVICIO()$mercado)
-#   observe({
-#     map_serv(base = "mercado", 
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(),
-#              cluster = cluster())
-#   })
-#   # Financiero (SERVICIO()$financiero)
-#   observe({
-#     map_serv(base = "financiero", 
-#              seleccion = input$sel_infra, 
-#              lista = SERVICIO(),
-#              cluster = cluster())
-#   })
-#   # Policia (SERVICIO()$seguridad)
-#   observe({
-#     map_serv(base = "seguridad", 
-#             seleccion = input$sel_infra, 
-#             lista = SERVICIO(),
-#             cluster = cluster())
-#   })
 
 ### Heat map -------------------------------------------------------
   
@@ -428,14 +310,47 @@ server <- function(input, output, session) {
              radio = input$radio,
              blur = input$blur)
   })
-# 2. Demográficos (DEMOG_r + PIRAMIDE_r) ------------------------------------------------------------
-
-### Pirámide población ---------------------------------------------------
+# 2. Demográfico ---------------------------------------------------------------
+  
+  # Mapa con envolvente de radios visibles (MIG + POB) -----------------------------------
+  # input$p_DEM  %in% c("DEM", "MIG") +  input$map_zoom >= 9 +  RADIO_env()
+  
+  observe({
+    
+    # req(nrow(RADIO_env()))
+    cat(as.character(Sys.time()), "MAPA_ENV", "\n")
+    
+    req(input$p_DEM)
+    req(input$map_zoom)
+    
+    if(input$p_DEM %in% c("PIR", "MIG") && 
+       input$tab1 == c("DEM") && 
+       input$map_zoom >= 9){
+      # if(nrow(RADIO_env()) > 0){
+      req(RADIO_r())
+      
+      RADIO_r() %>%
+        st_combine() %>%
+        leafletProxy("map", data = .) %>%
+        clearGroup("ENV") %>%
+        addPolygons(group = "ENV",
+                    color = "azure1",
+                    fill = "azure1",
+                    noClip = T,
+                    opacity = 0) %>%
+        showGroup("ENV")
+      # }
+    }else{
+      leafletProxy("map") %>%
+        clearGroup("ENV") 
+    }
+  })
+### 2a Pirámide población ---------------------------------------------------
   # PIRAMIDE_r()
   
   output$piramide <- renderPlot({
     
-    req(input$tab1 == "DEM")
+    req(input$p_DEM == "PIR")
     
     cat(as.character(Sys.time()), "PIRAMIDE", "\n")
     PIRAMIDE_r()  %>%
@@ -448,9 +363,9 @@ server <- function(input, output, session) {
       theme_minimal()
   })
 
-# 3. Población -----------------------------------------------------------------
+### 2b Población -----------------------------------------------------------------
 
-### Radios visibles con Indicadores --------------------------------------------
+  # Radios visibles con Indicadores --------------------------------------------
   
   observe({
     
@@ -460,7 +375,7 @@ server <- function(input, output, session) {
     cat(as.character(Sys.time()), "MAPA_POB_pre", "\n")
     # Revisar. WARNING1. En SER, cuando cambia zoom pasa por acá. Quizás es para sacar mapa
     
-    if(input$tab1 %in% "POB" && 
+    if(input$p_DEM %in% "POB" && 
        input$map_zoom >= 9 && 
        nrow(RADIO_r()) > 0){
       
@@ -471,20 +386,13 @@ server <- function(input, output, session) {
       cat(as.character(Sys.time()), "MAPA_POB", "\n")
       
       nom <- names(indic_POB)[indic_POB == input$POB_sel]
-
-      if(input$POB_sel == "SALUD"){
-        r_aux <- DEPTO %>%
-          rename(VARIABLE = SALUDno) %>%
-          mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
-                                 round(VARIABLE, 1)))
-      }else{
-        r_aux <- RADIO_r() 
-        r_aux$VARIABLE <- r_aux[[input$POB_sel]]
-        r_aux <- r_aux %>%
-          mutate(cuadro = paste0("<strong>", nom, ":</strong> ", 
-                                 round(VARIABLE, 1), 
-                                 cuadro_DEM))
-      }
+      
+      r_aux <- RADIO_r() 
+      r_aux$VARIABLE <- r_aux[[input$POB_sel]]
+      r_aux <- r_aux %>%
+        mutate(cuadro = paste0("<strong>", nom, ":</strong> ", 
+                               round(VARIABLE, 1), 
+                               cuadro_DEM))
       
       leafletProxy("map") %>%
           clearGroup("POB") %>%
@@ -497,7 +405,7 @@ server <- function(input, output, session) {
     }
   })
   
-### Gráfico de densidad de variables -------------------------------------------
+  # Gráfico de densidad de variables -------------------------------------------
   # input$POB_sel + RADIO_r()
   
   output$POB_histograma <- renderPlot({
@@ -505,14 +413,7 @@ server <- function(input, output, session) {
     req(RADIO_r())
     
     nom <- names(indic_POB)[indic_POB == input$POB_sel]
-    if(input$POB_sel == "SALUD"){
-      r_db <- DEPTO %>%
-        rename(v = SALUDno)
-    }else{
-      r_db <- data.frame(v = RADIO_r()[[input$POB_sel]])
-    }
-      
-    r_db %>%
+    data.frame(v = RADIO_r()[[input$POB_sel]]) %>%
         ggplot(aes(x = v)) + 
         geom_density(color = "tomato3") + 
         labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
@@ -520,14 +421,14 @@ server <- function(input, output, session) {
       
   })
   
-# 4. Migración (MIGRA_r + DEMOG_r + CEN_MIGRA_r)--------------------------
+### 2c. Migración (MIGRA_r + DEMOG_r + CEN_MIGRA_r)--------------------------
   
-### Gráfico de Torta ------------------------------------------------------
+  # Gráfico de Torta ------------------------------------------------------
   # MIGRA_r()
   
   output$migrantes <- renderPlot({
     
-    req(input$tab1 %in% c("MIG") & length(input$MIG_sel) > 0 )
+    req(input$p_DEM %in% c("MIG") & length(input$MIG_sel) > 0 )
     cat(as.character(Sys.time()), "TORTA_MIG", "\n")
     
     MIGRA_r() %>%
@@ -538,7 +439,7 @@ server <- function(input, output, session) {
       theme_void()
   })
   
-### Centroide en mapa ---------------------------------------------
+  # Centroide en mapa ---------------------------------------------
   # CEN_MIGRA_r()
   
   observe({
@@ -550,7 +451,10 @@ server <- function(input, output, session) {
     # Revisar. WARNING1. En SER, cuando cambia zoom pasa por acá. Quizás es para sacar mapa
     # También en Hábitat. Revisar en Gral
     
-    if(input$tab1 %in% c("MIG") && input$map_zoom >= 10 && nrow(CEN_MIGRA_r()) > 0){
+    if(input$p_DEM %in% c("MIG") && 
+       input$tab1 %in% c("DEM") && 
+       input$map_zoom >= 10 && 
+       nrow(CEN_MIGRA_r()) > 0){
       b <-  8 - (input$map_zoom- 9)/2
       b <- ifelse(b <= 1.5, 1.5, b)
       cat(as.character(Sys.time()), "MIGRA_CENT", "\n")
@@ -570,14 +474,53 @@ server <- function(input, output, session) {
     }
   })
   
-# 5. Hábitat ------------------------------------------------------------
+# 3. Salud ---------------------------------------------------------------------
+  
+### Radios visibles con Indicadores --------------------------------------------
+  
+  observe({
+
+    req(input$map_zoom)
+    req(input$SAL_sel)
+
+    cat(as.character(Sys.time()), "MAPA_SAL_pre", "\n")
+
+    if(input$tab1 %in% "SAL" &&
+       # input$map_zoom >= 9 &&
+       nrow(RADIO_r()) > 0){
+
+      if(exists("nom") && nom != input$SAL_sel){
+        leafletProxy("map") %>%
+          clearGroup("SAL")
+      }
+      cat(as.character(Sys.time()), "MAPA_SAL", "\n")
+
+      nom <- names(indic_SAL)[indic_SAL == input$SAL_sel]
+
+      r_aux <- DEPTO
+      r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
+      r_aux <- r_aux %>%
+        mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
+                               round(VARIABLE, 1)))
+
+      leafletProxy("map") %>%
+        clearGroup("SAL") %>%
+        addRadio(data = r_aux, grupo = "SAL",
+                 indicador = "VARIABLE", PAL = "YlOrRd")
+
+    }else{
+      leafletProxy("map") %>%
+        clearGroup("SAL")
+    }
+  })
+  
+# 4. Hábitat ------------------------------------------------------------
 
 ### Déficit ------------------------------------------------------------- 
   
 ### Radios visibles con Indicadores -------------------------------------
   # RADIO_r() + input$HAB_sel + 
   # input$tab1 %in% "HAB" + input$map_zoom 
-  
   
   observe({
     
@@ -663,7 +606,6 @@ server <- function(input, output, session) {
         
       }
     }else{
-      
       leafletProxy("map") %>%
         clearGroup("RAD") %>%
         clearGroup("DEF") 

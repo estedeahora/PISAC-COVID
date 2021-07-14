@@ -3,6 +3,7 @@
 library(shiny)
 library(sf)
 library(tidyverse)
+library(lubridate)
 library(leaflet)
 library(leaflet.extras)
 library(shinyWidgets)
@@ -23,6 +24,25 @@ if (!exists("MAPA")) {
     mutate(across(.cols = starts_with("T_"),
                   .fns = ~.x/100 ))
   
+  SE <- data.frame(INI = seq(as.Date("2020-01-05"),
+                             as.Date(today()+7), by = 7)) %>%
+    mutate(FIN = INI + 6,
+           LAB = paste0(format(INI, "%d %b %Y"), " - ", format(FIN, "%d %b %Y")),
+           w = 1:n(),
+           y = year(INI)) %>%
+    group_by(y) %>%
+    mutate(se = 1:n(),
+           se_l = str_length(se),
+           se_c = case_when(se_l == 1 ~ paste0("0", se),
+                            se_l == 2 ~ paste0(se)),
+           se_y = paste0(y, "_", se_c),
+           se_l = NULL,
+           se_c = NULL) %>%
+    ungroup()
+  
+  if(file.exists("_draft/_COVIDdb.RData")){
+    load("_draft/_COVIDdb.RData")
+  }
   
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
@@ -65,8 +85,11 @@ indic_POB <- c('Edad Promedio' = "EDAD",
                'Tasa de Juventud' = "t_JUV",
                'Tasa de Envejecimiento' = "t_ENV",
                '% de Personas Sin Estudios Secundarios Completos' = "SEC_p",
-               '% de Personas Con Estudios Universitarios Completos' = "SUP_p",
-               '% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUD")
+               '% de Personas Con Estudios Universitarios Completos' = "SUP_p")
+
+# Selectores de SAL
+indic_SAL <- c('% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUDno")
+
 
 # Selectores MIG
 paises <- DEMOG %>%
@@ -281,5 +304,4 @@ addRadio <- function(map, data, grupo,
                                                       bringToFront = TRUE)) #%>%
       # hideGroup(grupo)
   }
-
 }
