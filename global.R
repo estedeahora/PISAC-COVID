@@ -18,12 +18,12 @@ if (!exists("MAPA")) {
   load("data/_data.RData")
 
   ref <- read.csv("data/ref.csv")
-
-  names(EPH) <- c("I", "H_A", "H_Q")
-  EPH$I <- EPH$I %>% 
-    mutate(across(.cols = starts_with("T_"),
-                  .fns = ~.x/100 ))
-  
+#
+#   names(EPH) <- c("I", "H_A", "H_Q")
+#   EPH$I <- EPH$I %>%
+#     mutate(across(.cols = starts_with("T_"),
+#                   .fns = ~.x/100 ))
+#
   SE <- data.frame(INI = seq(as.Date("2020-01-05"),
                              as.Date(today()+7), by = 7)) %>%
     mutate(FIN = INI + 6,
@@ -39,14 +39,14 @@ if (!exists("MAPA")) {
            se_l = NULL,
            se_c = NULL) %>%
     ungroup()
-  
+
   if(file.exists("_draft/_COVIDdb.RData")){
     load("_draft/_COVIDdb.RData")
   }
-  
+
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
-  
+
   INFRAEST <- INFRA
   rm(INFRA)
 }
@@ -55,7 +55,7 @@ if (!exists("MAPA")) {
 
 
 AGLO <- c("Seleccionar (Todos)", unique(MAPA$AGLOMERADO$aglo))
- 
+
 poligono <- tibble::tribble(
   ~ base,      ~ color,      ~ fill,     ~opacity,
   "MUNI",      "black",      F,          1,
@@ -69,7 +69,7 @@ names(var_polig) <- c('Municipio', 'Barrio Popular', 'Country')
 l <- c(paste(seq(0, 90, by = 5),
              seq(5, 95, by = 5), sep = "-"),
        "+95")
- 
+
 # Selectores SER
 infraestructura <- c('Salud General' = "General",
                      'Salud Especialidades' = "Especialidad",
