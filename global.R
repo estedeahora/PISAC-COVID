@@ -7,7 +7,7 @@ library(lubridate)
 library(leaflet)
 library(leaflet.extras)
 library(shinyWidgets)
-library(shinythemes)
+# library(shinythemes)
 
 # Carga de Datos ----------------------------------------------------------
 
@@ -18,12 +18,8 @@ if (!exists("MAPA")) {
   load("data/_data.RData")
 
   ref <- read.csv("data/ref.csv")
-#
-#   names(EPH) <- c("I", "H_A", "H_Q")
-#   EPH$I <- EPH$I %>%
-#     mutate(across(.cols = starts_with("T_"),
-#                   .fns = ~.x/100 ))
-#
+
+  # Pasar a carga de datos
   SE <- data.frame(INI = seq(as.Date("2020-01-05"),
                              as.Date(today()+7), by = 7)) %>%
     mutate(FIN = INI + 6,
@@ -36,17 +32,37 @@ if (!exists("MAPA")) {
            se_c = case_when(se_l == 1 ~ paste0("0", se),
                             se_l == 2 ~ paste0(se)),
            se_y = paste0(y, "_", se_c),
+           se_SEL = paste0("SE: ", se, " (", y, ")"),
            se_l = NULL,
            se_c = NULL) %>%
     ungroup()
 
-  if(file.exists("_draft/_COVIDdb.RData")){
-    load("_draft/_COVIDdb.RData")
-  }
-
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
+  
+  if(file.exists("_draft/_COVIDdb.RData")){
+    load("_draft/_COVIDdb.RData")
 
+    COVID <- left_join(DEPTO[c("ID_DTO", "PERSONA")], 
+                       COVIDa, by = "ID_DTO") %>%
+      mutate(across(.cols = c(starts_with("INI"),  starts_with("INT") ,
+                              starts_with("CUI") , starts_with("FAL")),
+                    .fns = ~.x/PERSONA * 100000)) %>%
+      select(c(starts_with("INI"),  starts_with("INT") ,
+               starts_with("CUI") , starts_with("FAL")))
+    
+    rango_COVID <- COVID %>% 
+      st_drop_geometry() %>% 
+      map_df(range) %>% 
+      t() %>%
+      as_tibble(rownames = "VAR") %>%
+      mutate(SEL = str_sub(VAR, end = 3)) %>%
+      group_by(SEL) %>%
+      summarise(MIN = min(V1, na.rm = T),
+                MAX = max(V2, na.rm = T)) 
+  }
+
+  
   INFRAEST <- INFRA
   rm(INFRA)
 }
@@ -88,7 +104,12 @@ indic_POB <- c('Edad Promedio' = "EDAD",
                '% de Personas Con Estudios Universitarios Completos' = "SUP_p")
 
 # Selectores de SAL
-indic_SAL <- c('% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUDno")
+indic_SAL <- c('% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUDno",
+               'Casos Positivos por COVID cada 100.000 habitantes' = "INI",
+               'Internados por COVID cada 100.000 habitantes' = "INT",
+               'Casos en cuidados intensivos por COVID cada 100.000 habitantes' = "CUI",
+               'Fallecidos por COVID cada 100.000 habitantes' = "FAL"
+               )
 
 
 # Selectores MIG
@@ -268,40 +289,45 @@ map_heat <- function(lista, base,
 
 addRadio <- function(map, data, grupo,
                      indicador,
+                     rango = NULL,
                      # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
                      PAL = "YlOrRd" ){
 
   data$indic <- data[[indicador]]
 
-  # Exigir que la variable de análisis tenga al menos dos valores diferentes (para sacar cuantiles)
-  if(length(unique(data$indic) ) > 1){
-    l <- length( unique( quantile(data$indic, na.rm = T, probs = seq(0, 1, length.out = 9) )  ) )
-    if(l >= 9){
-      data$l <- colorQuantile(PAL, data$indic, n = 9)(data$indic)
+    # Exigir que la variable de análisis tenga al menos dos valores diferentes (para sacar cuantiles)
+    if(length(unique(data$indic) ) > 1 | !is.null(rango)){
+      if(is.null(rango) ){
+        l <- length( unique( quantile(data$indic, na.rm = T, probs = seq(0, 1, length.out = 9) )  ) )
+        if(l >= 9){
+          data$l <- colorQuantile(PAL, data$indic, n = 9)(data$indic)
+        }else{
+          data$l <- colorNumeric(PAL, range(data$indic))(data$indic)
+        }
+      }else{
+        data$l <- colorNumeric(PAL, rango)(data$indic)  
+      }
+      
+      map %>%
+        addPolygons(data = data, group = grupo, smoothFactor = 0.5,
+                    popup = ~cuadro,
+                    opacity = 1.0, color = "#BDBDBD", weight = 0.3,
+                    # fillOpacity = ~VAR_FILL,
+                    fillColor = ~l,
+                    highlightOptions = highlightOptions(color = "black", weight = 1,
+                                                        bringToFront = TRUE)) %>%
+        showGroup(group = grupo)
+      
     }else{
-      data$l <- colorNumeric(PAL, range(data$indic))(data$indic)
-    }
-
-    map %>%
-      addPolygons(data = data, group = grupo, smoothFactor = 0.5,
-                  popup = ~cuadro,
-                  opacity = 1.0, color = "#BDBDBD", weight = 0.3,
-                  # fillOpacity = ~VAR_FILL,
-                  fillColor = ~l,
-                  highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                      bringToFront = TRUE)) %>%
-      showGroup(group = grupo)
-
-  }else{
-    # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
-    map %>%
-      addPolygons(data = rbind(data, data), group = grupo, smoothFactor = 0.5,
-                  popup = ~cuadro,
-                  opacity = 1.0, color = "#BDBDBD", weight = 0.3,
-                  # fillOpacity = ~VAR_FILL,
-                  fillColor = "#A9A9A9",
-                  highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                      bringToFront = TRUE)) #%>%
+      # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
+      map %>%
+        addPolygons(data = rbind(data, data), group = grupo, smoothFactor = 0.5,
+                    popup = ~cuadro,
+                    opacity = 1.0, color = "#BDBDBD", weight = 0.3,
+                    # fillOpacity = ~VAR_FILL,
+                    fillColor = "#A9A9A9",
+                    highlightOptions = highlightOptions(color = "black", weight = 1,
+                                                        bringToFront = TRUE)) #%>%
       # hideGroup(grupo)
-  }
+    }
 }

@@ -16,7 +16,7 @@ siguiente código:
 
 ``` r
 packages <- c(
-  "shiny", "leaflet.extras", "shinyWidgets", "shinythemes", 
+  "shiny", "leaflet.extras", "shinyWidgets",
   "tidyverse", "devtools",  "sf", "leaflet" 
   )
     

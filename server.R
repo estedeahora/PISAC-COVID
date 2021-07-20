@@ -30,6 +30,14 @@ server <- function(input, output, session) {
     updateTabsetPanel(inputId = "p_DEM", 
                       selected = input$DEM_ch)
   })
+
+  # SALUD (SAL) -----------------------------*
+  # Panel de selección de Población (Pirámide + Indicadores + Migración)
+  
+  observeEvent(input$SAL_sel, {
+    updateTabsetPanel(inputId = "p_SAL", 
+                      selected = if(input$SAL_sel == "SALUDno") {"p_COBER"} else {"p_COVID"} )
+  })
   
   
   # Hábitat (HAB) -----------------------------*
@@ -486,7 +494,7 @@ server <- function(input, output, session) {
     cat(as.character(Sys.time()), "MAPA_SAL_pre", "\n")
 
     if(input$tab1 %in% "SAL" &&
-       # input$map_zoom >= 9 &&
+       # input$SAL_sel == "SALUDno" &&
        nrow(RADIO_r()) > 0){
 
       if(exists("nom") && nom != input$SAL_sel){
@@ -496,22 +504,57 @@ server <- function(input, output, session) {
       cat(as.character(Sys.time()), "MAPA_SAL", "\n")
 
       nom <- names(indic_SAL)[indic_SAL == input$SAL_sel]
-
-      r_aux <- DEPTO
-      r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
-      r_aux <- r_aux %>%
-        mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
-                               round(VARIABLE, 1)))
-
-      leafletProxy("map") %>%
-        clearGroup("SAL") %>%
-        addRadio(data = r_aux, grupo = "SAL",
-                 indicador = "VARIABLE", PAL = "YlOrRd")
+      
+      if(input$SAL_sel == "SALUDno"){
+        r_aux <- DEPTO
+        r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
+        r_aux <- r_aux %>%
+          mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
+                                 round(VARIABLE, 1)))
+        
+        leafletProxy("map") %>%
+          clearGroup("SAL") %>%
+          addRadio(data = r_aux, grupo = "SAL",
+                   indicador = "VARIABLE", PAL = "YlOrRd")
+      }else{
+        
+        r_aux <- COVID %>% select(starts_with(input$SAL_sel))
+        sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
+        VAR <- r_aux[[sel]]
+        
+        # req(!is.null(VAR))
+        if(is.null(VAR)){
+          VAR <- rep(0, nrow(r_aux))
+        }
+        
+        r_aux$VARIABLE <- VAR
+        r_aux <- r_aux %>%
+          mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
+                                 "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                 "<br><br><strong>", nom, ":</strong> ", round(VARIABLE, 1)))
+        r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
+                         c("MIN", "MAX")] %>% 
+          simplify() %>% unname()
+        
+        leafletProxy("map") %>%
+          clearGroup("SAL") %>%
+          addRadio(data = r_aux, grupo = "SAL",  rango = r_sel,
+                   indicador = "VARIABLE", PAL = "YlOrRd")
+        
+        
+      }
 
     }else{
       leafletProxy("map") %>%
         clearGroup("SAL")
     }
+  })
+  
+
+# SE Texto ----------------------------------------------------------------
+
+  output$SEL_SE <- renderText({
+    SE$LAB[SE$se_SEL  == input$SE]
   })
   
 # 4. Hábitat ------------------------------------------------------------

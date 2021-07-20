@@ -1,4 +1,4 @@
-ui <- fluidPage(theme = shinytheme("united"),
+ui <- fluidPage(#theme = shinytheme("united"),
   tabsetPanel(id = "tab_gral",
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
@@ -128,7 +128,24 @@ ui <- fluidPage(theme = shinytheme("united"),
                                tabPanel("Salud", value = "SAL",
                                         icon = icon("stethoscope"),
                                         selectInput("SAL_sel", "Elija indicador", choices = indic_SAL),
-                                        plotOutput("SAL_histograma")
+                                        tabsetPanel(
+                                          id = "p_SAL",
+                                          type = "hidden",
+                                          tabPanelBody("p_COBER",
+                                                       plotOutput("SAL_histograma")
+                                          ),
+                                          tabPanelBody("p_COVID",
+                                                       # "OTRO PANEL",
+                                                       sliderTextInput("SE", "Semana epidemeológica", 
+                                                                       animate = TRUE,
+                                                                       choices = SE$se_SEL,
+                                                                       force_edges = TRUE,
+                                                                       width = '100%'
+                                                                       ),
+                                                       textOutput("SEL_SE" )
+                                          ) 
+                                        )
+                                        
                                ),
                                # Panel de Hábitat
                                tabPanel("Hábitat", value = "HAB",
@@ -162,8 +179,7 @@ ui <- fluidPage(theme = shinytheme("united"),
                                           tabPanelBody("p_HABITAT",
                                                        plotOutput("HAB_histograma1")
                                           ) 
-                                        ),
-                                        
+                                        )
                                ),
                                # Panel de Movilidad
                                tabPanel("Movilidad", value = "MOV",
@@ -196,7 +212,6 @@ ui <- fluidPage(theme = shinytheme("united"),
              )
     ),
       tabPanel("Evolución", icon = icon("line-chart"),
-             
              sidebarLayout(
                sidebarPanel(
                  pickerInput(
@@ -224,16 +239,20 @@ ui <- fluidPage(theme = shinytheme("united"),
                )
              )
     ),
-    tabPanel("Proyecto",
-             column(width = 5,
+    tabPanel("Proyecto", icon = icon("question"),
+             column(width = 6,
                h1("Acerca del proyecto"),
-               "Esta aplicación fue desarrollada en el marco del proyecto PISAC-COVID, coordinado por María Mercedes Di Virgilio...",
+               HTML("Esta aplicación fue desarrollada en el marco del Proyecto <em>La implementación de políticas públicas para dar respuesta a la crisis desatada por la pandemia COVID-19: Una mirada desde las relaciones intergubernamentales y las redes de políticas</em>. El mismo es parte del grupo de proyectos asociativos de investigación en Ciencias Sociales y Humanas para la generación de conocimientos a partir del estudio de la sociedad argentina (PISAC) en la pandemia y la postpandemia del COVID-19."),
+               HTML("<br><br>Los PISACS son impulsados por la Agencia Nacional de Promoción de la Investigación, el Desarrollo Tecnológico y la Innovación (Agencia I+D+i ) y financiados por el Fondo para la Investigación Científica y Tecnológica (FONCYT)."),
+               HTML("<br><br>Este proyecto está dirigido por la Dra. María Mercedes Di Virgilio (UBA, IIGG/ CONICET) y se encuentra conformado por 11 grupos de investigación (nodos) de distintas regiones e instituciones de Argentina."),
+               HTML("<br><a href = 'http://tripcovidiigg.sociales.uba.ar/'> Saber más</a>"),
                h2("Cómo citar..."),
-               HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'www'> https://www....dsa.com </a>"),
-               HTML("<br> <br><p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")
+               HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'https://estedeahora.shinyapps.io/PISAC-COVID/'> https://estedeahora.shinyapps.io/PISAC-COVID/ </a>"),
+               HTML("<br> <br>
+                    <p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")
              ),
-             column(width = 2),
-             column(width = 3, 
+             column(width = 1),
+             column(width = 2, 
                     h2("Descargar datos"),
                     HTML("<br>INACTIVO<br>"),
                     downloadButton("down", label = "Descarga")
