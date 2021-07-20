@@ -7,64 +7,33 @@ library(lubridate)
 library(leaflet)
 library(leaflet.extras)
 library(shinyWidgets)
-# library(shinythemes)
 
 # Carga de Datos ----------------------------------------------------------
 
-options(OutDec= ",", big.mark = T)
+# options(OutDec= ",", big.mark = T)
 
 if (!exists("MAPA")) {
   # Cargar datos
   load("data/_data.RData")
-
+  load("data/COVID.RData")
   ref <- read.csv("data/ref.csv")
-
-  # Pasar a carga de datos
-  SE <- data.frame(INI = seq(as.Date("2020-01-05"),
-                             as.Date(today()+7), by = 7)) %>%
-    mutate(FIN = INI + 6,
-           LAB = paste0(format(INI, "%d %b %Y"), " - ", format(FIN, "%d %b %Y")),
-           w = 1:n(),
-           y = year(INI)) %>%
-    group_by(y) %>%
-    mutate(se = 1:n(),
-           se_l = str_length(se),
-           se_c = case_when(se_l == 1 ~ paste0("0", se),
-                            se_l == 2 ~ paste0(se)),
-           se_y = paste0(y, "_", se_c),
-           se_SEL = paste0("SE: ", se, " (", y, ")"),
-           se_l = NULL,
-           se_c = NULL) %>%
-    ungroup()
 
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
-  
-  if(file.exists("_draft/_COVIDdb.RData")){
-    load("_draft/_COVIDdb.RData")
 
-    COVID <- left_join(DEPTO[c("ID_DTO", "PERSONA")], 
-                       COVIDa, by = "ID_DTO") %>%
-      mutate(across(.cols = c(starts_with("INI"),  starts_with("INT") ,
-                              starts_with("CUI") , starts_with("FAL")),
-                    .fns = ~.x/PERSONA * 100000)) %>%
-      select(c(starts_with("INI"),  starts_with("INT") ,
-               starts_with("CUI") , starts_with("FAL")))
-    
-    rango_COVID <- COVID %>% 
-      st_drop_geometry() %>% 
-      map_df(range) %>% 
-      t() %>%
-      as_tibble(rownames = "VAR") %>%
-      mutate(SEL = str_sub(VAR, end = 3)) %>%
-      group_by(SEL) %>%
-      summarise(MIN = min(V1, na.rm = T),
-                MAX = max(V2, na.rm = T)) 
-  }
-
-  
   INFRAEST <- INFRA
   rm(INFRA)
+
+  COVID <- COVID %>%
+    mutate(cuadro = paste0("<strong>Totales cada 100mil habitantes</strong>",
+                           "<br>Período: ", format(SE$INI_p[1], format = "%d/%m/%Y"), 
+                           " - ", format(SE$FIN_p[nrow(SE)],  format = "%d/%m/%Y"),
+                           "",
+                           "<br><br>- Positivos ", round(INI, 1),
+                           "<br>- Internados ", round(INT, 1),
+                           "<br>- En ciudados intensivos ", round(CUI, 1),
+                           "<br>- Fallecidos ", round(FAL, 1)))
+  
 }
 
 # Armar variables para selectores -------------------------------------
@@ -105,10 +74,10 @@ indic_POB <- c('Edad Promedio' = "EDAD",
 
 # Selectores de SAL
 indic_SAL <- c('% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUDno",
-               'Casos Positivos por COVID cada 100.000 habitantes' = "INI",
-               'Internados por COVID cada 100.000 habitantes' = "INT",
-               'Casos en cuidados intensivos por COVID cada 100.000 habitantes' = "CUI",
-               'Fallecidos por COVID cada 100.000 habitantes' = "FAL"
+               'Casos Positivos por COVID (c/100.000 hab.)' = "INI",
+               'Internados por COVID (c/100.000 hab.)' = "INT",
+               'Casos en cuidados intensivos por COVID (c/100.000 hab.)' = "CUI",
+               'Fallecidos por COVID (c/100.000 hab.)' = "FAL"
                )
 
 
@@ -167,6 +136,22 @@ resumen <- rbind(resumen,
                 c("Total Aglomerados", apply(resumen[-1], 2, sum ))) %>%
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
+
+plot_SE <- SE %>%
+  pivot_longer(cols = INI:FAL, names_to = "VAR", values_to = "n") %>%
+  filter(!is.na(n) ) %>%
+  left_join(data.frame(VAR = c("INI", "INT", "CUI", "FAL"), 
+                       LAB_VAR = c("Casos Positivos", "Internados", 
+                                   "Cuidados intensivos", "Fallecidos")), by = "VAR") %>%
+  ggplot(aes(x = INI_p, y = n, group = VAR, color = VAR)) +
+  geom_point(alpha = 0.3) +
+  geom_line(alpha = 0.7) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%b/%y") +
+  facet_wrap("LAB_VAR", scales = "free_y", ) +
+  labs(x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position = "none")
 
 # Íconos ------------------------------------------------------------------
 
@@ -288,8 +273,7 @@ map_heat <- function(lista, base,
 }
 
 addRadio <- function(map, data, grupo,
-                     indicador,
-                     rango = NULL,
+                     indicador, rango = as.null(),
                      # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
                      PAL = "YlOrRd" ){
 
@@ -300,24 +284,25 @@ addRadio <- function(map, data, grupo,
       if(is.null(rango) ){
         l <- length( unique( quantile(data$indic, na.rm = T, probs = seq(0, 1, length.out = 9) )  ) )
         if(l >= 9){
-          data$l <- colorQuantile(PAL, data$indic, n = 9)(data$indic)
+          PAL_f <- colorQuantile(PAL, data$indic, n = 9)
         }else{
-          data$l <- colorNumeric(PAL, range(data$indic))(data$indic)
+          PAL_f <- colorNumeric(PAL, range(data$indic))
         }
       }else{
-        data$l <- colorNumeric(PAL, rango)(data$indic)  
+        PAL_f <- colorNumeric(PAL, rango)
       }
-      
+
       map %>%
         addPolygons(data = data, group = grupo, smoothFactor = 0.5,
                     popup = ~cuadro,
                     opacity = 1.0, color = "#BDBDBD", weight = 0.3,
                     # fillOpacity = ~VAR_FILL,
-                    fillColor = ~l,
+                    fillColor = ~PAL_f(indic),
                     highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                        bringToFront = TRUE)) %>%
+                                                        bringToFront = TRUE))  %>%
+        addLegend(pal = PAL_f, values = ~indic, group = grupo) %>%
         showGroup(group = grupo)
-      
+
     }else{
       # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
       map %>%
@@ -330,4 +315,81 @@ addRadio <- function(map, data, grupo,
                                                         bringToFront = TRUE)) #%>%
       # hideGroup(grupo)
     }
+}
+
+addRadioL <- function(map = "map", data, grupo,
+                     indicador, rango = as.null(), logar = F,
+                     leyenda = T,
+                     # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
+                     PAL = "YlOrRd" ){
+
+  data$indic <- data[[indicador]]
+
+  # Exigir que la variable de análisis tenga al menos dos valores diferentes (para sacar cuantiles)
+  if(length(unique(data$indic) ) > 1 | !is.null(rango)){
+    if(is.null(rango) ){
+      l <- length( unique( quantile(data$indic, na.rm = T, probs = seq(0, 1, length.out = 9) )  ) )
+      if(l >= 9){
+        PAL_f <- colorQuantile(PAL, data$indic, n = 9)
+      }else{
+        PAL_f <- colorNumeric(PAL, range(data$indic))
+      }
+    }else{
+      PAL_f <- colorNumeric(PAL, rango)
+    }
+
+    mapa <- leafletProxy(map, data = data) %>%
+      clearGroup(grupo) %>%
+      clearControls() %>%
+      addPolygons(data = data, group = grupo, smoothFactor = 0.5,
+                  popup = ~cuadro,
+                  opacity = 1.0, color = "#BDBDBD", weight = 0.3,
+                  # fillOpacity = ~VAR_FILL,
+                  fillColor = ~PAL_f(indic),
+                  highlightOptions = highlightOptions(color = "black", weight = 1,
+                                                      bringToFront = TRUE))  %>%
+      showGroup(group = grupo)
+
+    if(leyenda){
+      if(is.null(rango)){
+        mapa <- mapa %>%
+          addLegend(title = "",
+                    pal = PAL_f,
+                    values = ~indic,
+                    group = grupo)
+      }else{
+        if(logar){
+          mapa <- mapa %>%
+            addLegend(title = "",
+                      pal = PAL_f,
+                      values = seq(from = rango[1], to = rango[2], length.out = 10),
+                      labFormat = labelFormat(transform = function(x) {round(exp(x**(1/2)) - 1)}),
+                      group = grupo)
+
+        }else{
+          mapa <- mapa %>%
+            addLegend(title = "",
+                      pal = PAL_f,
+                      values = seq(from = rango[1], to = rango[2], length.out = 10),
+                      group = grupo)
+        }
+
+        }
+
+    }
+
+    mapa
+  }else{
+    # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
+    leafletProxy(map, data = data) %>%
+      clearGroup("SAL") %>%
+      addPolygons(data = rbind(data, data), group = grupo, smoothFactor = 0.5,
+                  popup = ~cuadro,
+                  opacity = 1.0, color = "#BDBDBD", weight = 0.3,
+                  # fillOpacity = ~VAR_FILL,
+                  fillColor = "#A9A9A9",
+                  highlightOptions = highlightOptions(color = "black", weight = 1,
+                                                      bringToFront = TRUE)) #%>%
+    # hideGroup(grupo)
+  }
 }

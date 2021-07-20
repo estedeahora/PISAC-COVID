@@ -39,6 +39,11 @@ server <- function(input, output, session) {
                       selected = if(input$SAL_sel == "SALUDno") {"p_COBER"} else {"p_COVID"} )
   })
   
+  observeEvent(input$COVID_ch, {
+    updateTabsetPanel(inputId = "COVID", 
+                      selected = input$COVID_ch)
+  })
+  
   
   # Hábitat (HAB) -----------------------------*
   # Panel de selección de Hábitat (Déficit vs resto)
@@ -121,7 +126,7 @@ server <- function(input, output, session) {
   
   limite <- reactive({
     
-    req(input$tab1 %in% c("DEM", "HAB", "MOV", "SAL"))
+    req(input$tab1 %in% c("DEM", "HAB", "MOV"))
     req(input$map_bounds)
     
     b <- input$map_bounds
@@ -488,14 +493,15 @@ server <- function(input, output, session) {
   
   observe({
 
-    req(input$map_zoom)
+    # req(input$map_zoom)
     req(input$SAL_sel)
 
     cat(as.character(Sys.time()), "MAPA_SAL_pre", "\n")
 
-    if(input$tab1 %in% "SAL" &&
+    if(input$tab1 %in% "SAL" #&&
        # input$SAL_sel == "SALUDno" &&
-       nrow(RADIO_r()) > 0){
+       # nrow(RADIO_r()) > 0
+       ){
 
       if(exists("nom") && nom != input$SAL_sel){
         leafletProxy("map") %>%
@@ -511,11 +517,10 @@ server <- function(input, output, session) {
         r_aux <- r_aux %>%
           mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
                                  round(VARIABLE, 1)))
+        r_sel <- NULL
+        l_sel <-  F
         
-        leafletProxy("map") %>%
-          clearGroup("SAL") %>%
-          addRadio(data = r_aux, grupo = "SAL",
-                   indicador = "VARIABLE", PAL = "YlOrRd")
+
       }else{
         
         r_aux <- COVID %>% select(starts_with(input$SAL_sel))
@@ -526,24 +531,37 @@ server <- function(input, output, session) {
         if(is.null(VAR)){
           VAR <- rep(0, nrow(r_aux))
         }
-        
-        r_aux$VARIABLE <- VAR
-        r_aux <- r_aux %>%
-          mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
-                                 "<br>", SE$LAB[SE$se_SEL  == input$SE],
-                                 "<br><br><strong>", nom, ":</strong> ", round(VARIABLE, 1)))
         r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
-                         c("MIN", "MAX")] %>% 
-          simplify() %>% unname()
+                             c("MIN", "MAX")] %>% 
+          simplify() 
         
-        leafletProxy("map") %>%
-          clearGroup("SAL") %>%
-          addRadio(data = r_aux, grupo = "SAL",  rango = r_sel,
-                   indicador = "VARIABLE", PAL = "YlOrRd")
+        if(input$SAL_sel %in% c("INI", "INT", "CUI")){
+          r_aux$VARIABLE <- log(VAR+1)**2
+          r_aux <- r_aux %>%
+            mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
+                                   "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                   "<br><br><strong>", nom, ":</strong> ", 
+                                   round(VAR, 1)))
+          
+          r_sel <- log(r_sel+1)**2
+          l_sel <-  T
+        }else{
+          r_aux$VARIABLE <- VAR
+          r_aux <- r_aux %>%
+            mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
+                                   "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                   "<br><br><strong>", nom, ":</strong> ",
+                                   round(VARIABLE, 1)))
+          l_sel <-  F
+          
+        }
         
-        
-      }
 
+
+      }
+      addRadioL(data = r_aux, grupo = "SAL", rango = r_sel, logar = l_sel,
+                 indicador = "VARIABLE", PAL = "YlOrRd") 
+      
     }else{
       leafletProxy("map") %>%
         clearGroup("SAL")
@@ -551,6 +569,15 @@ server <- function(input, output, session) {
   })
   
 
+### Gráfico de casos COVID -----------------------------------------------------
+  
+  output$COVID_CRONO <- renderPlot({
+    plot_SE + 
+      geom_vline(xintercept = SE$INI_p[SE$se_SEL == input$SE], 
+                 alpha = 0.2,  size = 2, color = "tomato3") 
+      
+  })
+  
 # SE Texto ----------------------------------------------------------------
 
   output$SEL_SE <- renderText({

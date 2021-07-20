@@ -74,12 +74,8 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                         )
                                ),
                                # Panel de datos demográficos
-                               # navbarMenu("Demográfico", #id = "p_DEM",
-                               #            icon = icon("group"),
-                               # Usar botones
                                tabPanel("Demográfico", value = "DEM",
                                         icon = icon("group"),
-                                        
                                         radioGroupButtons(
                                           inputId = "DEM_ch",
                                           label = "", selected = "PIR",
@@ -135,14 +131,32 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                        plotOutput("SAL_histograma")
                                           ),
                                           tabPanelBody("p_COVID",
-                                                       # "OTRO PANEL",
-                                                       sliderTextInput("SE", "Semana epidemeológica", 
-                                                                       animate = TRUE,
-                                                                       choices = SE$se_SEL,
-                                                                       force_edges = TRUE,
-                                                                       width = '100%'
-                                                                       ),
-                                                       textOutput("SEL_SE" )
+                                                       radioGroupButtons(
+                                                         inputId = "COVID_ch",
+                                                         choices = c("Total" = "COVID_T",
+                                                                     "Cronológico" = "COVID_C"),
+                                                         justified = TRUE,
+                                                         checkIcon = list(
+                                                           yes = icon("ok",  style = "color: Coral",
+                                                                      lib = "glyphicon"))),
+                                                       tabsetPanel(
+                                                         id = "COVID",
+                                                         type = "hidden",
+                                                         tabPanelBody("COVID_T",
+                                                                      "TOTAL DE CASOS - WIP"
+                                                                      ),
+                                                         tabPanelBody("COVID_C",
+                                                                      sliderTextInput("SE", "Semana epidemeológica", 
+                                                                                      animate = TRUE,
+                                                                                      choices = SE$se_SEL,
+                                                                                      force_edges = TRUE,
+                                                                                      width = '100%'
+                                                                      ),
+                                                                      textOutput("SEL_SE"),
+                                                                      plotOutput("COVID_CRONO")
+                                                                      
+                                                         )
+                                                       )
                                           ) 
                                         )
                                         
@@ -254,7 +268,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
              column(width = 1),
              column(width = 2, 
                     h2("Descargar datos"),
-                    HTML("<br>INACTIVO<br>"),
+                    HTML("<br>INACTIVO - WIP<br>"),
                     downloadButton("down", label = "Descarga")
              )
              
