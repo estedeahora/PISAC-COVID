@@ -7,7 +7,10 @@ a la crisis desatada por la pandemia COVID-19: Una mirada desde las
 relaciones intergubernamentales y las redes de políticas* (Res 119-2020
 PISAC-COVID-19-00021).
 
-<!--# # Versión online: Una versión de esta aplicación puede consutarse en:  -->
+# Versión online
+
+Una versión de la aplicación puede consultarse en:
+<https://estedeahora.shinyapps.io/PISAC-COVID/>
 
 # Correr la aplicación localmente
 
