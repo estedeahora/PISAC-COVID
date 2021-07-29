@@ -92,7 +92,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                           # Sub Panel de Pirámide de población
                                           tabPanel("Pirámide", value = "PIR",
                                                    # icon = icon("align-center", lib = "glyphicon"),
-                                                   plotOutput("piramide")
+                                                   plotlyOutput("piramide")
                                           ),
                                           # Sub Panel de Variables para población
                                           tabPanel("Población", value = "POB",

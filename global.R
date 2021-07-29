@@ -6,7 +6,8 @@ library(tidyverse)
 library(lubridate)
 library(leaflet)
 library(leaflet.extras)
-library(shinyWidgets)
+# library(shinyWidgets)
+library(plotly)
 
 # Carga de Datos ----------------------------------------------------------
 

@@ -361,7 +361,7 @@ server <- function(input, output, session) {
 ### 2a Pirámide población ---------------------------------------------------
   # PIRAMIDE_r()
   
-  output$piramide <- renderPlot({
+  output$piramide <- renderPlotly({
     
     req(input$p_DEM == "PIR")
     
