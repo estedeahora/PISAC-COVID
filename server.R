@@ -32,7 +32,7 @@ server <- function(input, output, session) {
   })
 
   # SALUD (SAL) -----------------------------*
-  # Panel de selección de Población (Pirámide + Indicadores + Migración)
+  # Panel de selección de SALUD (COVID / COBERTURA)
   
   observeEvent(input$SAL_sel, {
     updateTabsetPanel(inputId = "p_SAL", 
@@ -154,23 +154,6 @@ server <- function(input, output, session) {
     MAPA$RADIO %>%
       filter(ID %in% limite()$ID) 
   })
-  
-  # Envolvente de radios visibles
-  # RADIO_r()
-  
-  # RADIO_env <- reactive({
-  #   cat(as.character(Sys.time()), "RADIO_env", "\n")
-  #   
-  #   req(RADIO_r())    
-  #   # ACA ESTABA EL ERROR
-  # 
-  #   RADIO_r() %>%
-  #     summarise()
-  #   
-  # })
-  
-  # Selección de base DEMOG (radios visibles)
-  # limite()
   
   DEMOG_r <- reactive({
     cat(as.character(Sys.time()), "DEMOG_r_pre", "\n")
@@ -366,14 +349,19 @@ server <- function(input, output, session) {
     req(input$p_DEM == "PIR")
     
     cat(as.character(Sys.time()), "PIRAMIDE", "\n")
-    PIRAMIDE_r()  %>%
+    p <- PIRAMIDE_r()  %>%
       ggplot(mapping = aes(x = EDADQUI)) +
-      geom_bar(aes(y = V), stat = "identity", fill = "blue", alpha = 0.4) +
-      geom_bar(aes(y = M), stat = "identity", fill = "red", alpha = 0.4) +
+      geom_bar(aes(y = V, text = paste("Edad:", EDADQUI, "<br>Varones:", abs(V) ) ), 
+               stat = "identity", fill = "blue", alpha = 0.4) +
+      geom_bar(aes(y = M, text = paste("Edad:", EDADQUI, "<br>Mujeres:", abs(M) ) ), 
+               stat = "identity", fill = "red", alpha = 0.4) +
       coord_flip() +
       labs(x = NULL, y = NULL) +
       scale_y_continuous(labels =  function(br) paste0(abs(br)/1000, "k")) +
       theme_minimal()
+    
+    ggplotly(p, tooltip="text") %>% plotly::config(plot_ly(), displayModeBar = FALSE)
+  
   })
 
 ### 2b Población -----------------------------------------------------------------
@@ -388,33 +376,30 @@ server <- function(input, output, session) {
     cat(as.character(Sys.time()), "MAPA_POB_pre", "\n")
     # Revisar. WARNING1. En SER, cuando cambia zoom pasa por acá. Quizás es para sacar mapa
     
-    if(input$p_DEM %in% "POB" && 
-       input$map_zoom >= 9 && 
-       nrow(RADIO_r()) > 0){
+    if(input$p_DEM == "POB" && 
+       input$tab1 == "DEM" && 
+       input$map_zoom >= 9){
       
-      if(exists("nom") && nom != input$POB_sel){
-        leafletProxy("map") %>%
-          clearGroup("POB")
-      }
+      req(RADIO_r())
+      
       cat(as.character(Sys.time()), "MAPA_POB", "\n")
-      
-      nom <- names(indic_POB)[indic_POB == input$POB_sel]
-      
-      r_aux <- RADIO_r() 
-      r_aux$VARIABLE <- r_aux[[input$POB_sel]]
-      r_aux <- r_aux %>%
-        mutate(cuadro = paste0("<strong>", nom, ":</strong> ", 
-                               round(VARIABLE, 1), 
-                               cuadro_DEM))
-      
-      leafletProxy("map") %>%
-          clearGroup("POB") %>%
-          addRadio(data = r_aux, grupo = "POB", 
-                   indicador = "VARIABLE", PAL = "YlOrRd")
+        
+        nom <- names(indic_POB)[indic_POB == input$POB_sel]
+        
+        r_aux <- RADIO_r() 
+        r_aux$VARIABLE <- r_aux[[input$POB_sel]]
+        r_aux <- r_aux %>%
+          mutate(cuadro = paste0("<strong>", nom, ":</strong> ", 
+                                 round(VARIABLE, 1), 
+                                 cuadro_DEM))
+        
+        addRadio("map", data = r_aux, grupo = "POB", 
+                 indicador = "VARIABLE", PAL = "YlOrRd")
       
     }else{
       leafletProxy("map") %>%
-        clearGroup("POB") 
+        clearGroup("POB") #%>%
+        # clearControls()
     }
   })
   
@@ -489,29 +474,23 @@ server <- function(input, output, session) {
   
 # 3. Salud ---------------------------------------------------------------------
   
-### Radios visibles con Indicadores --------------------------------------------
+### Departamentos visibles con Indicadores --------------------------------------------
   
-  observe({
+  observe({ 
 
-    # req(input$map_zoom)
     req(input$SAL_sel)
 
     cat(as.character(Sys.time()), "MAPA_SAL_pre", "\n")
 
-    if(input$tab1 %in% "SAL" #&&
-       # input$SAL_sel == "SALUDno" &&
-       # nrow(RADIO_r()) > 0
-       ){
+    if(input$tab1 %in% "SAL" ){
 
-      if(exists("nom") && nom != input$SAL_sel){
-        leafletProxy("map") %>%
-          clearGroup("SAL")
-      }
       cat(as.character(Sys.time()), "MAPA_SAL", "\n")
 
       nom <- names(indic_SAL)[indic_SAL == input$SAL_sel]
       
       if(input$SAL_sel == "SALUDno"){
+        # Cobertura de salud
+        
         r_aux <- DEPTO
         r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
         r_aux <- r_aux %>%
@@ -520,62 +499,80 @@ server <- function(input, output, session) {
         r_sel <- NULL
         l_sel <-  F
         
-
       }else{
+        # Covid 
+        r_aux <- COVID %>% 
+          select(starts_with(input$SAL_sel), cuadro)
         
-        r_aux <- COVID %>% select(starts_with(input$SAL_sel))
-        sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
-        VAR <- r_aux[[sel]]
         
-        # req(!is.null(VAR))
-        if(is.null(VAR)){
-          VAR <- rep(0, nrow(r_aux))
-        }
-        r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
-                             c("MIN", "MAX")] %>% 
-          simplify() 
         
-        if(input$SAL_sel %in% c("INI", "INT", "CUI")){
-          r_aux$VARIABLE <- log(VAR+1)**2
-          r_aux <- r_aux %>%
-            mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
-                                   "<br>", SE$LAB[SE$se_SEL  == input$SE],
-                                   "<br><br><strong>", nom, ":</strong> ", 
-                                   round(VAR, 1)))
-          
-          r_sel <- log(r_sel+1)**2
-          l_sel <-  T
-        }else{
-          r_aux$VARIABLE <- VAR
-          r_aux <- r_aux %>%
-            mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
-                                   "<br>", SE$LAB[SE$se_SEL  == input$SE],
-                                   "<br><br><strong>", nom, ":</strong> ",
-                                   round(VARIABLE, 1)))
+        if(input$COVID_ch == "COVID_T"){
+          # COVID: TOTAL
+          r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
           l_sel <-  F
+          r_sel <- range(r_aux$VARIABLE)
+        }else{
+          # COVID: Por SE
+          sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
+          VAR <- r_aux[[sel]]
           
+          if(is.null(VAR)){
+            VAR <- rep(0, nrow(r_aux))
+          }
+          r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
+                               c("MIN", "MAX")] %>% 
+            simplify() 
+          
+          if(input$SAL_sel %in% c("INI", "INT", "CUI")){
+            r_aux$VARIABLE <- log(VAR+1)**2
+            r_aux <- r_aux %>%
+              mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
+                                     "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                     "<br><br><strong>", nom, ":</strong> ", 
+                                     round(VAR, 1)))
+            
+            r_sel <- log(r_sel+1)**2
+            l_sel <-  T
+          }else{
+            r_aux$VARIABLE <- VAR
+            r_aux <- r_aux %>%
+              mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
+                                     "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                     "<br><br><strong>", nom, ":</strong> ",
+                                     round(VARIABLE, 1)))
+            l_sel <-  F
+            
+          }
         }
         
-
-
+        
       }
-      addRadioL(data = r_aux, grupo = "SAL", rango = r_sel, logar = l_sel,
-                 indicador = "VARIABLE", PAL = "YlOrRd") 
+      if(l_sel){
+        transf <- function(x) {round(exp(x**(1/2)) - 1)}
+      }else{
+        transf <- function(x) {x}
+      }
+      
+      addRadio("map", data = r_aux, grupo = "SAL", 
+               rango = r_sel, transf = transf,
+               indicador = "VARIABLE", PAL = "YlOrRd") 
       
     }else{
       leafletProxy("map") %>%
-        clearGroup("SAL")
-    }
+        clearGroup("SAL") 
+      }
   })
   
 
 ### Gráfico de casos COVID -----------------------------------------------------
   
   output$COVID_CRONO <- renderPlot({
+    
     plot_SE + 
       geom_vline(xintercept = SE$INI_p[SE$se_SEL == input$SE], 
-                 alpha = 0.2,  size = 2, color = "tomato3") 
-      
+                 alpha = 0.4,  size = 2, color = "tomato3") 
+    
+    # ggplotly(p, tooltip="text") %>% plotly::config(plot_ly(), displayModeBar = FALSE)
   })
   
 # SE Texto ----------------------------------------------------------------
@@ -601,7 +598,8 @@ server <- function(input, output, session) {
       clearGroup("DEF") %>% 
       clearGroup("CEN_M") %>% 
       clearGroup("POB") %>%
-      clearGroup("ENV") 
+      clearGroup("ENV") %>%
+      clearControls()
     
       })
 
@@ -615,11 +613,6 @@ server <- function(input, output, session) {
        nrow(RADIO_r()) > 0){
       
       cat(as.character(Sys.time()), "MAP_HAB", "\n")
-      
-      if(exists("nom") && nom != input$HAB_sel){
-        leafletProxy("map") %>%
-          clearGroup("RAD")
-      }
       
       nom <- names(indic_HAB)[indic_HAB == input$HAB_sel]
       r_aux <- RADIO_r() 
@@ -635,21 +628,19 @@ server <- function(input, output, session) {
                                    round(VARIABLE_p, 1), 
                                    "% (Total: ", round(VARIABLE, 1), ")",
                                    cuadro_DEM),
-                   indicador = VARIABLE_p)
+                   VARIABLE = VARIABLE_p)
         }else{
           r_aux <- r_aux %>%
             mutate(cuadro = paste0("<strong>", nom, ":</strong> ", 
                                    round(VARIABLE, 1),
                                    cuadro_DEM),
-                   indicador = VARIABLE)
+                   VARIABLE = VARIABLE)
         }
 
-        leafletProxy("map") %>%
-          clearGroup("RAD") %>%
-          clearGroup("DEF") %>%
-          addRadio(data = r_aux, grupo = "RAD", 
-                   indicador = "indicador", PAL = "YlOrRd") 
-        
+        addRadio("map", data = r_aux, grupo = "RAD", 
+                 indicador = "VARIABLE", PAL = "YlOrRd") %>%
+            clearGroup("DEF") 
+
       }else{
         # DEFICIT
         r_aux <- r_aux %>%
@@ -660,19 +651,32 @@ server <- function(input, output, session) {
         
         m <- leafletProxy("map", data = r_aux) %>%
           clearGroup("DEF") %>%
-          clearGroup("RAD")
+          clearGroup("RAD") %>%
+          clearControls()
         
         # CUANTI
         if(input$DEF_ch == "CUANTI" || input$DEF_ch == "MIXTO"){
           
-          m <- addRadio(map = m, data = r_aux, grupo = "DEF", 
-                        indicador = "x100H_CUANT", PAL = "Reds")
+          r_aux_CT <- r_aux %>% select(indic = x100H_CUANT, cuadro)
+          PAL_f_CT <- paleta(PAL = "Reds", data = r_aux_CT, indic = "indic")
+          
+          m <- m %>% 
+            addRadioPolyg(grupo = "DEF", data = r_aux_CT,
+                          PAL_f = PAL_f_CT) %>%
+            addRadioLeyenda(grupo = "DEF", PAL_f = PAL_f_CT, data = r_aux_CT)
         }
         # CUALI
         if(input$DEF_ch == "CUALI" || input$DEF_ch == "MIXTO"){
-          m <- addRadio(map = m, data = r_aux, grupo = "DEF", 
-                        indicador = "x100H_CUALI", PAL = "PuBu")
+          
+          r_aux_CL <- r_aux %>% select(indic = x100H_CUALI, cuadro)
+          PAL_f_CL <- paleta(PAL = "PuBu", data = r_aux_CL, indic = "indic")
+          
+          m <- m %>% 
+            addRadioPolyg(grupo = "DEF", data = r_aux_CL,
+                          PAL_f = PAL_f_CL) %>%
+            addRadioLeyenda(grupo = "DEF", PAL_f = PAL_f_CL, data = r_aux_CL)
         }
+        m
         
       }
     }else{

@@ -3,7 +3,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
              fluidRow(
-               column(width = 3,
+               column(width = 4,
                       fluidRow(
                         column(width = 12,
                                selectInput("aglo", "Elija el Aglomerado",
@@ -25,7 +25,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
              fluidRow(
                sidebarLayout(
                  # Panel de selección
-                 sidebarPanel(width = 3,
+                 sidebarPanel(width = 4,
                    tabsetPanel(id = "tab1",
                                # Panel de servicios urbanos (SER)
                                tabPanel("Infraestructura", value = "SER",
@@ -115,7 +115,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                      ),
                                                      multiple = TRUE
                                                    ),
-                                                   plotOutput("migrantes")
+                                                   plotOutput("migrantes", click = "click_MIGRA")
                                                    
                                           )
                                         )

@@ -6,12 +6,14 @@ library(tidyverse)
 library(lubridate)
 library(leaflet)
 library(leaflet.extras)
-# library(shinyWidgets)
+library(shinyWidgets)
 library(plotly)
 
 # Carga de Datos ----------------------------------------------------------
 
 # options(OutDec= ",", big.mark = T)
+plotly::config(plot_ly(), displayModeBar = FALSE) 
+
 
 if (!exists("MAPA")) {
   # Cargar datos
@@ -144,7 +146,8 @@ plot_SE <- SE %>%
   left_join(data.frame(VAR = c("INI", "INT", "CUI", "FAL"), 
                        LAB_VAR = c("Casos Positivos", "Internados", 
                                    "Cuidados intensivos", "Fallecidos")), by = "VAR") %>%
-  ggplot(aes(x = INI_p, y = n, group = VAR, color = VAR)) +
+  mutate(label = paste(se_SEL, "<br>", LAB_VAR, n ) ) %>%
+  ggplot(aes(x = INI_p, y = n, group = VAR, color = VAR, text = sprintf(label))) +
   geom_point(alpha = 0.3) +
   geom_line(alpha = 0.7) +
   scale_x_date(date_breaks = "2 month", date_labels = "%b/%y") +
@@ -205,12 +208,13 @@ icon_lista <- iconList(
 
 map_polig <- function(base = c("MUNI", "COUNTRY", "RENABAP"),
                      grupo = base,
+                     map = "map",
                      color = "black", opacity = 0, fill = T, weight = 1,
                      highlightOptions = NULL,
                      seleccion = input$zonas, POLIG_BASE){
 
   if(base %in% seleccion){
-    leafletProxy("map", data = POLIG_BASE[[base]]) %>%
+    leafletProxy(map = map, data = POLIG_BASE[[base]]) %>%
       clearGroup(grupo) %>%
       addPolygons(group = grupo,
                   popup = ~name,
@@ -223,7 +227,7 @@ map_polig <- function(base = c("MUNI", "COUNTRY", "RENABAP"),
                   opacity = opacity) %>%
       showGroup(grupo)
   }else{
-    leafletProxy("map",data = POLIG_BASE[[base]]) %>%
+    leafletProxy(map,data = POLIG_BASE[[base]]) %>%
       hideGroup(grupo)
   }
 }
@@ -273,124 +277,109 @@ map_heat <- function(lista, base,
 
 }
 
-addRadio <- function(map, data, grupo,
-                     indicador, rango = as.null(),
-                     # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
-                     PAL = "YlOrRd" ){
-
-  data$indic <- data[[indicador]]
-
-    # Exigir que la variable de análisis tenga al menos dos valores diferentes (para sacar cuantiles)
-    if(length(unique(data$indic) ) > 1 | !is.null(rango)){
-      if(is.null(rango) ){
-        l <- length( unique( quantile(data$indic, na.rm = T, probs = seq(0, 1, length.out = 9) )  ) )
-        if(l >= 9){
-          PAL_f <- colorQuantile(PAL, data$indic, n = 9)
-        }else{
-          PAL_f <- colorNumeric(PAL, range(data$indic))
-        }
-      }else{
-        PAL_f <- colorNumeric(PAL, rango)
-      }
-
-      map %>%
-        addPolygons(data = data, group = grupo, smoothFactor = 0.5,
-                    popup = ~cuadro,
-                    opacity = 1.0, color = "#BDBDBD", weight = 0.3,
-                    # fillOpacity = ~VAR_FILL,
-                    fillColor = ~PAL_f(indic),
-                    highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                        bringToFront = TRUE))  %>%
-        addLegend(pal = PAL_f, values = ~indic, group = grupo) %>%
-        showGroup(group = grupo)
-
-    }else{
-      # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
-      map %>%
-        addPolygons(data = rbind(data, data), group = grupo, smoothFactor = 0.5,
-                    popup = ~cuadro,
-                    opacity = 1.0, color = "#BDBDBD", weight = 0.3,
-                    # fillOpacity = ~VAR_FILL,
-                    fillColor = "#A9A9A9",
-                    highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                        bringToFront = TRUE)) #%>%
-      # hideGroup(grupo)
-    }
-}
-
-addRadioL <- function(map = "map", data, grupo,
-                     indicador, rango = as.null(), logar = F,
-                     leyenda = T,
-                     # col_DATA = T, #Agregar elegir color en base a datos o en base a variable absoluta
-                     PAL = "YlOrRd" ){
-
-  data$indic <- data[[indicador]]
-
-  # Exigir que la variable de análisis tenga al menos dos valores diferentes (para sacar cuantiles)
-  if(length(unique(data$indic) ) > 1 | !is.null(rango)){
+paleta <- function(data = data, indic = "indic",
+                   rango = as.null(), PAL = "YlOrRd"){
+  
+  if(length(unique(data[[indic]]) ) > 1 | !is.null(rango)){
     if(is.null(rango) ){
-      l <- length( unique( quantile(data$indic, na.rm = T, probs = seq(0, 1, length.out = 9) )  ) )
+      l <- length( unique( quantile(data[[indic]], na.rm = T, 
+                                    probs = seq(0, 1, length.out = 9) )  ) )
       if(l >= 9){
-        PAL_f <- colorQuantile(PAL, data$indic, n = 9)
+        # 9 percentiles
+        PAL_f <- colorQuantile(PAL, data[[indic]], n = 9)
       }else{
-        PAL_f <- colorNumeric(PAL, range(data$indic))
+        # Menos de 9 percentiles -> Escala continua con rango
+        PAL_f <- colorNumeric(PAL, range(data[[indic]]))
       }
     }else{
+      # Rango
       PAL_f <- colorNumeric(PAL, rango)
     }
+  }else{
+    # Sólo un valor diferente -> Valor Constante (gris)
+    PAL_f <- colorNumeric(palette = "#A9A9A9", domain = data[[indic]])
+  }
+  return(PAL_f)
+}
 
-    mapa <- leafletProxy(map, data = data) %>%
+addRadioPolyg <- function(map, data = getMapData(map), 
+                          grupo, PAL_f){
+  
+  map %>%
+    addPolygons(data = data, 
+                group = grupo, smoothFactor = 0.5,
+                popup = ~cuadro,
+                opacity = 1.0, color = "#BDBDBD", weight = 0.3,
+                fillColor = ~PAL_f(indic),
+                highlightOptions = highlightOptions(color = "black", weight = 1,
+                                                    bringToFront = TRUE))  %>%
+    showGroup(group = grupo)
+}
+
+addRadioLeyenda <- function(map, 
+                            data = getMapData(map), 
+                            grupo, 
+                            rango = as.null(),
+                            transf = function(x) {x},
+                            PAL_f){
+  
+  if(is.null(rango)){
+    if(attributes(PAL_f)$colorType == "quantile"){
+      qpal_colors <- unique(PAL_f(sort(data[["indic"]]))) # hex codes
+      qpal_labs <- quantile(data[["indic"]],  na.rm = T,
+                            seq(0, 1, length.out = length(qpal_colors) + 1)) # depends on n from pal
+      qpal_labs <- round(qpal_labs)
+      qpal_labs <- paste(lag(qpal_labs), qpal_labs, sep = " - ")[-1] # first lag is NA
+      
+      map %>%
+        addLegend(title = "", position = "topleft",
+                  colors = qpal_colors, 
+                  labels = qpal_labs,
+                  labFormat = labelFormat(transf = transf),
+                  group = grupo)
+    }else{
+      map %>%
+        addLegend(title = "", position = "topleft",
+                  pal = PAL_f,
+                  values = ~indic,
+                  labFormat = labelFormat(transf = transf),
+                  group = grupo)
+    }
+    
+  }else{
+    map %>%
+      addLegend(title = "", position = "topleft",
+                pal = PAL_f,
+                values = seq(from = rango[1], to = rango[2], length.out = 10),
+                labFormat = labelFormat(transf = transf),
+                group = grupo)
+  }
+}
+
+addRadio <- function(map = "map", data, indicador, 
+                      grupo,
+                      rango = as.null(), transf = function(x) {x},
+                      leyenda = T,
+                      PAL = "YlOrRd" ){
+
+  # if(is.null(db[["cuadro"]]))
+  
+  data$indic <- data[[indicador]]
+  PAL_f <- paleta(data = data, indic = "indic",
+                  rango = rango, PAL = PAL)
+  
+  mapa <- leafletProxy(map, data = data) %>%
       clearGroup(grupo) %>%
       clearControls() %>%
-      addPolygons(data = data, group = grupo, smoothFactor = 0.5,
-                  popup = ~cuadro,
-                  opacity = 1.0, color = "#BDBDBD", weight = 0.3,
-                  # fillOpacity = ~VAR_FILL,
-                  fillColor = ~PAL_f(indic),
-                  highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                      bringToFront = TRUE))  %>%
-      showGroup(group = grupo)
+      addRadioPolyg(grupo = grupo, PAL_f = PAL_f)
 
-    if(leyenda){
-      if(is.null(rango)){
-        mapa <- mapa %>%
-          addLegend(title = "",
-                    pal = PAL_f,
-                    values = ~indic,
-                    group = grupo)
-      }else{
-        if(logar){
-          mapa <- mapa %>%
-            addLegend(title = "",
-                      pal = PAL_f,
-                      values = seq(from = rango[1], to = rango[2], length.out = 10),
-                      labFormat = labelFormat(transform = function(x) {round(exp(x**(1/2)) - 1)}),
-                      group = grupo)
 
-        }else{
-          mapa <- mapa %>%
-            addLegend(title = "",
-                      pal = PAL_f,
-                      values = seq(from = rango[1], to = rango[2], length.out = 10),
-                      group = grupo)
-        }
-
-        }
-
-    }
-
-    mapa
-  }else{
-    # Genera warning porque no quiere generar grupos con menos de dos objetos espaciales
-    leafletProxy(map, data = data) %>%
-      clearGroup("SAL") %>%
-      addPolygons(data = rbind(data, data), group = grupo, smoothFactor = 0.5,
-                  popup = ~cuadro,
-                  opacity = 1.0, color = "#BDBDBD", weight = 0.3,
-                  # fillOpacity = ~VAR_FILL,
-                  fillColor = "#A9A9A9",
-                  highlightOptions = highlightOptions(color = "black", weight = 1,
-                                                      bringToFront = TRUE)) #%>%
-    # hideGroup(grupo)
+  if(leyenda){
+    mapa <- mapa %>%
+      addRadioLeyenda(grupo = grupo, PAL_f = PAL_f,
+                      transf = transf, rango = rango)
   }
+
+  return(mapa)
+  
 }
