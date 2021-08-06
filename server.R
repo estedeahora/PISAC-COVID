@@ -242,16 +242,68 @@ server <- function(input, output, session) {
          POLIG_BASE = POLIGONO(), seleccion = input$zonas)
   })
   
+### Resumen de población -----------------------------------------------------
+  # input$aglo
+  # DEMOG_r()
+  
+  output$resumen_dem <- renderTable({
+    
+    req(input$aglo)
+    
+    t_res <- DEMOG_r() %>%
+      summarise(Nivel = "Selección",
+                Población = sum(PERSONAS, na.rm = T),
+                Hogares = sum(HOGARES, na.rm = T),
+                Viviendas = sum(VIVIENDAS, na.rm = T),
+                Radios = n())
+    
+    if(input$aglo != "Seleccionar (Todos)"){
+      sel <- c("Total Aglomerados", input$aglo)
+    }else{
+      sel <- c("Total Aglomerados")
+    }
+    
+    rbind(resumen[sel, ],
+          t_res)
+    
+  })
+  
 ### Descripción de indicadores -------------------------------------------------
   
   output$desc <-  renderUI({
 
-    ref_t <-  ref %>% filter(panel %in% input$tab1)
-    final <- paste0("<strong>Descripción de los indicadores</strong>",
-                    "<br>", ref_t$desc_panel [1],
-                    # "<strong>Indicador: </strong>",
-                    # ref_t$desc_indic[ref_t$desc_indic == ],
-                    "<br><br><strong>Fuente: </strong>", ref_t$source [1])
+    if(input$tab1 %in% c("SER", "MOV")){
+        ref_f <- ref %>% 
+                  filter(panel %in% input$tab1)
+      
+    }else if(input$tab1 == "DEM"){
+        ref_f <- ref %>% 
+                   filter(panel == input$tab1 &
+                          subpanel == input$DEM_ch)
+        
+        if(input$DEM_ch == "POB"){
+          ref_f <- ref_f %>% 
+            filter(indic == input$POB_sel)
+        }
+    }else if(input$tab1 == "SAL"){
+        ref_f <- ref %>% 
+          filter(panel == input$tab1 &
+                 indic == input$SAL_sel)
+        
+    }else if(input$tab1 == "HAB"){
+        ref_f <- ref %>% 
+          filter(panel == input$tab1 &
+                 indic == input$HAB_sel)
+    }
+    
+    
+    if(nrow(ref_f) != 1) stop("Problema con descipción de " )
+    
+    final <- paste0("<strong>", ref_f$desc_panel,": </strong>",
+                    ref_f$desc_indic, 
+                    "<br><br><strong>Fuente: </strong>", ref_f$source,
+                    "<br><em>Notas: </em>", ref_f$notes
+                    )
     HTML(final)
   })
   
@@ -259,32 +311,6 @@ server <- function(input, output, session) {
   
   # DESARROLLAR
     
-### Resumen de población -----------------------------------------------------
-  # input$aglo
-  # DEMOG_r()
-
-  output$resumen_dem <- renderTable({
-
-    req(input$aglo)
-
-    t_res <- DEMOG_r() %>%
-      summarise(Nivel = "Selección",
-                Población = sum(PERSONAS, na.rm = T),
-                Hogares = sum(HOGARES, na.rm = T),
-                Viviendas = sum(VIVIENDAS, na.rm = T),
-                Radios = n())
-
-    if(input$aglo != "Seleccionar (Todos)"){
-      sel <- c("Total Aglomerados", input$aglo)
-    }else{
-      sel <- c("Total Aglomerados")
-    }
-
-    rbind(resumen[sel, ],
-          t_res)
-
-  })
-  
 # 1. Infraestructura urbana (SERVICIO())  -------------------------
 
   observe({
@@ -511,6 +537,7 @@ server <- function(input, output, session) {
           r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
           l_sel <-  F
           r_sel <- range(r_aux$VARIABLE)
+          
         }else{
           # COVID: Por SE
           sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
@@ -544,8 +571,6 @@ server <- function(input, output, session) {
             
           }
         }
-        
-        
       }
       if(l_sel){
         transf <- function(x) {round(exp(x**(1/2)) - 1)}

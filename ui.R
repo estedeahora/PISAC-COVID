@@ -1,4 +1,5 @@
 ui <- fluidPage(#theme = shinytheme("united"),
+  # shinyFeedback::useShinyFeedback(),
   tabsetPanel(id = "tab_gral",
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
@@ -143,8 +144,8 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                          id = "COVID",
                                                          type = "hidden",
                                                          tabPanelBody("COVID_T",
-                                                                      "TOTAL DE CASOS - WIP"
-                                                                      ),
+                                                                      paste("<strong>Período:</strong><br>", 
+                                                                            SE$INI_p[1]," a ", SE$INI_p[nrow(SE)]),
                                                          tabPanelBody("COVID_C",
                                                                       sliderTextInput("SE", "Semana epidemeológica", 
                                                                                       animate = TRUE,
