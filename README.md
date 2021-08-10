@@ -18,10 +18,9 @@ Para correr la aplicación localmente en su computadora utilice el
 siguiente código:
 
 ``` r
-packages <- c(
-  "shiny", "leaflet.extras", "shinyWidgets",
-  "tidyverse", "devtools",  "sf", "leaflet" 
-  )
+packages <- c("devtools",  "shiny","shinyWidgets", "shinyFeedback"
+              "tidyverse", "lubridate", "plotly",
+              "sf", "leaflet", "leaflet.extras")
     
 to_install <- packages[!packages %in% installed.packages()[, "Package"]]
 
