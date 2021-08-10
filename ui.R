@@ -1,5 +1,5 @@
 ui <- fluidPage(#theme = shinytheme("united"),
-  # shinyFeedback::useShinyFeedback(),
+  shinyFeedback::useShinyFeedback(),
   tabsetPanel(id = "tab_gral",
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
@@ -44,7 +44,6 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                           ),
                                           multiple = TRUE
                                         ),
-                                        
                                         switchInput(inputId = "clu", label = "Clusters", 
                                                     value = TRUE, labelWidth = "50",
                                                     onLabel = "Sí",  offLabel = "No", 
@@ -61,8 +60,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                           tabPanelBody("p_HEATNO"),
                                           tabPanelBody("p_HEATSI", 
                                                        selectInput("sel_HEAT", "Elija Infraestructura urbana",
-                                                                   choices = infraestructura, 
-                                                                   selected = infraestructura[1]),
+                                                                   choices = infraestructura),
                                                        column(width = 6, 
                                                               sliderInput("radio", "Radio", value = 8, 
                                                                           min = 1, max = 50)
@@ -73,6 +71,49 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                        )
                                           )
                                         )
+                               ),
+                               # Panel de Salud
+                               tabPanel("Salud", value = "SAL",
+                                        icon = icon("stethoscope"),
+                                        selectInput("SAL_sel", "Elija indicador", choices = indic_SAL),
+                                        tabsetPanel(
+                                          id = "p_SAL",
+                                          type = "hidden",
+                                          tabPanelBody("p_COBER",
+                                                       plotOutput("SAL_histograma")
+                                          ),
+                                          tabPanelBody("p_COVID",
+                                                       radioGroupButtons(
+                                                         inputId = "COVID_ch",
+                                                         choices = c("Total" = "COVID_T",
+                                                                     "Cronológico" = "COVID_C"),
+                                                         justified = TRUE,
+                                                         checkIcon = list(
+                                                           yes = icon("ok",  style = "color: Coral",
+                                                                      lib = "glyphicon"))),
+                                                       tabsetPanel(
+                                                         id = "COVID",
+                                                         type = "hidden",
+                                                         tabPanelBody("COVID_T",
+                                                                      HTML(paste("<strong>Período considerado:</strong><br>", 
+                                                                                 format(SE$INI_p[1], format = "%d de %B %Y"), " a ", 
+                                                                                 format(SE$INI_p[nrow(SE)], format = "%d de %B %Y")), 
+                                                                           "<br><p>&nbsp<br>&nbsp</p>" )),
+                                                         tabPanelBody("COVID_C",
+                                                                      HTML("<strong>Semana epidemeológica:</strong>"),
+                                                                      textOutput("SEL_SE"),
+                                                                      sliderTextInput("SE", "", 
+                                                                                      animate = TRUE,
+                                                                                      choices = SE$se_SEL,
+                                                                                      force_edges = TRUE,
+                                                                                      width = '100%'
+                                                                      )
+                                                         )
+                                                       ),
+                                                       plotOutput("COVID_CRONO", height = "300px")
+                                          ) 
+                                        )
+                                        
                                ),
                                # Panel de datos demográficos
                                tabPanel("Demográfico", value = "DEM",
@@ -121,47 +162,6 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                           )
                                         )
                                ),
-                               # Panel de Salud
-                               tabPanel("Salud", value = "SAL",
-                                        icon = icon("stethoscope"),
-                                        selectInput("SAL_sel", "Elija indicador", choices = indic_SAL),
-                                        tabsetPanel(
-                                          id = "p_SAL",
-                                          type = "hidden",
-                                          tabPanelBody("p_COBER",
-                                                       plotOutput("SAL_histograma")
-                                          ),
-                                          tabPanelBody("p_COVID",
-                                                       radioGroupButtons(
-                                                         inputId = "COVID_ch",
-                                                         choices = c("Total" = "COVID_T",
-                                                                     "Cronológico" = "COVID_C"),
-                                                         justified = TRUE,
-                                                         checkIcon = list(
-                                                           yes = icon("ok",  style = "color: Coral",
-                                                                      lib = "glyphicon"))),
-                                                       tabsetPanel(
-                                                         id = "COVID",
-                                                         type = "hidden",
-                                                         tabPanelBody("COVID_T",
-                                                                      paste("<strong>Período:</strong><br>", 
-                                                                            SE$INI_p[1]," a ", SE$INI_p[nrow(SE)]) ),
-                                                         tabPanelBody("COVID_C",
-                                                                      sliderTextInput("SE", "Semana epidemeológica", 
-                                                                                      animate = TRUE,
-                                                                                      choices = SE$se_SEL,
-                                                                                      force_edges = TRUE,
-                                                                                      width = '100%'
-                                                                      ),
-                                                                      textOutput("SEL_SE"),
-                                                                      plotOutput("COVID_CRONO")
-                                                                      
-                                                         )
-                                                       )
-                                          ) 
-                                        )
-                                        
-                               ),
                                # Panel de Hábitat
                                tabPanel("Hábitat", value = "HAB",
                                         icon = icon("city"),
@@ -184,7 +184,8 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                                       lib = "glyphicon"))),
                                                        tabsetPanel(
                                                          tabPanel("Tabla",
-                                                                  tableOutput("DEF_t")
+                                                                  div(tableOutput("DEF_t"), 
+                                                                      style = "font-size:80%")
                                                          ),
                                                          tabPanel("Densidad",
                                                                   plotOutput("HAB_histograma2")
@@ -198,8 +199,45 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                ),
                                # Panel de Movilidad
                                tabPanel("Movilidad", value = "MOV",
-                                        icon = icon("bus")
-                                        )
+                                        icon = icon("bus"),
+                                        HTML("<br>"),
+                                        fluidRow(
+                                          column(4, 
+                                                 switchInput(
+                                                   inputId = "SUBE_ch", 
+                                                   label = "Por hora", 
+                                                   value = FALSE, labelWidth = "50",
+                                                   onLabel = "Sí",  offLabel = "No", 
+                                                   onStatus = "danger", size = "mini")
+                                          ),
+                                          column(4, 
+                                                 switchInput(
+                                                   inputId = "SUBE_rel", 
+                                                   label = "Relativo", 
+                                                   value = FALSE, labelWidth = "50",
+                                                   onLabel = "Sí",  offLabel = "No", 
+                                                   onStatus = "danger", size = "mini")
+                                          )  
+                                        ),
+                                        uiOutput("SUBE_DIA"),
+                                        
+                                        tabsetPanel(
+                                          id = "SUBE",
+                                          type = "hidden",
+                                          tabPanelBody("SUBE_T", 
+                                                       HTML("<br><p>  &nbsp</p><br>" )),
+                                          tabPanelBody("SUBE_C",
+                                                       sliderTextInput("Hs", "Hora del día", 
+                                                                       animate = TRUE,
+                                                                       choices = SUBE_h$lab,
+                                                                       force_edges = TRUE,
+                                                                       width = '100%'
+                                                       )
+                                          )
+                                        ),
+                                        plotOutput("SUBE_CRONO", height = "300px")
+                                        
+                               )
                    ),
                  ),
                  # Mapa principal
@@ -209,7 +247,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                )
              ),
              fluidRow(
-               column(width = 3,
+               column(width = 4,
                       htmlOutput("desc")
                )
                #   column(width = 8, 
@@ -226,7 +264,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                #   )           
              )
     ),
-      tabPanel("Evolución", icon = icon("line-chart"),
+      tabPanel("Aglomerados", icon = icon("line-chart"),
              sidebarLayout(
                sidebarPanel(
                  pickerInput(

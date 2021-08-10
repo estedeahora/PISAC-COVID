@@ -31,14 +31,15 @@ server <- function(input, output, session) {
                       selected = input$DEM_ch)
   })
 
-  # SALUD (SAL) -----------------------------*
-  # Panel de selección de SALUD (COVID / COBERTURA)
+  # Salud (SAL) -----------------------------*
   
+  # Panel de selección de SALUD (COVID / COBERTURA)
   observeEvent(input$SAL_sel, {
     updateTabsetPanel(inputId = "p_SAL", 
                       selected = if(input$SAL_sel == "SALUDno") {"p_COBER"} else {"p_COVID"} )
   })
   
+  # Panel de selección de Total / Cronológico
   observeEvent(input$COVID_ch, {
     updateTabsetPanel(inputId = "COVID", 
                       selected = input$COVID_ch)
@@ -51,6 +52,33 @@ server <- function(input, output, session) {
   observeEvent(input$HAB_sel, {
     updateTabsetPanel(inputId = "p_HAB", 
                       selected = if(input$HAB_sel == "DEFICIT") {"p_DEFICIT"} else {"p_HABITAT"})
+  })
+  
+
+  # Movilidad (MOV) --------------------------*
+  # Panel de selección de Total / Por hora
+  
+  observeEvent(input$SUBE_ch, {
+    updateTabsetPanel(inputId = "SUBE", 
+                      selected = if(input$SUBE_ch) "SUBE_C" else "SUBE_T" )
+  })
+  
+  output$SUBE_DIA <- renderUI({
+    value <- isolate(input$SUBE_DIA_din)
+    
+    if(input$SUBE_rel){
+      ini <- SUBE_d$lab[2]
+    }else{
+      ini <- SUBE_d$lab[1]
+    }
+    sliderTextInput(
+      inputId = "SUBE_DIA_din",
+      label = "Seleccionar día",
+      choices = SUBE_d$lab, 
+      selected = value,
+      from_min = ini,
+      hide_min_max = T #, grid = T
+    )
   })
   
 ### Reactivo para pirámide poblacional (DEM) -----------------------------------------------
@@ -119,6 +147,28 @@ server <- function(input, output, session) {
     }
   })
   
+  ## MOVILIDAD
+  
+  SUBE <- reactive({
+    
+    req(input$tab1 %in% c("MOV"))
+    
+    # req(!s, cancelOutput = TRUE)
+    if(input$aglo == "Seleccionar (Todos)"){
+      AGLO_h3_b
+    }else{
+      AGLO_h3_b %>% filter(aglo %in% input$aglo)
+    }
+  })
+  
+  observe({
+    s <- input$aglo %in% c("Seleccionar (Todos)", "Bariloche", "AMGBA", 
+                           "Gran Santa Fe-Paraná", "Gran Mendoza")
+    shinyFeedback::feedbackWarning(inputId = "aglo", !s & input$tab1 %in% c("MOV"), 
+                                   "Este aglomerado no tiene datos de movilidad")
+  })
+  
+  
 ### Selección de radios visibles ----------------------------------------------------------
   
   # Límites del mapa visible
@@ -126,7 +176,7 @@ server <- function(input, output, session) {
   
   limite <- reactive({
     
-    req(input$tab1 %in% c("DEM", "HAB", "MOV"))
+    req(input$tab1 %in% c("DEM", "HAB"))
     req(input$map_bounds)
     
     b <- input$map_bounds
@@ -250,23 +300,29 @@ server <- function(input, output, session) {
     
     req(input$aglo)
     
-    t_res <- DEMOG_r() %>%
-      summarise(Nivel = "Selección",
-                Población = sum(PERSONAS, na.rm = T),
-                Hogares = sum(HOGARES, na.rm = T),
-                Viviendas = sum(VIVIENDAS, na.rm = T),
-                Radios = n())
-    
-    if(input$aglo != "Seleccionar (Todos)"){
-      sel <- c("Total Aglomerados", input$aglo)
-    }else{
+    if(input$aglo == "Seleccionar (Todos)"){
       sel <- c("Total Aglomerados")
+    }else{
+      sel <- c("Total Aglomerados", input$aglo)
     }
     
-    rbind(resumen[sel, ],
-          t_res)
+    if(input$tab1 %in% c("DEM", "HAB") ){
+      t_res <- DEMOG_r() %>%
+        summarise(Nivel = "Selección",
+                  Población = sum(PERSONAS, na.rm = T),
+                  Hogares = sum(HOGARES, na.rm = T),
+                  Viviendas = sum(VIVIENDAS, na.rm = T),
+                  Radios = n())
+      tf <- rbind(resumen[sel, ],
+            t_res)
+    }else{
+      tf <- resumen[sel, ] %>% select(-Radios)
+    }
     
-  })
+    tf %>% 
+      mutate(across(.cols = -Nivel,
+                    .fns = ~format(as.numeric(.x), big.mark = " ", trim = F) ))
+  }, align = "r")
   
 ### Descripción de indicadores -------------------------------------------------
   
@@ -592,10 +648,14 @@ server <- function(input, output, session) {
 ### Gráfico de casos COVID -----------------------------------------------------
   
   output$COVID_CRONO <- renderPlot({
+    if(input$COVID_ch == "COVID_T"){
+      plot_SE
+    }else{
+      plot_SE + 
+        geom_vline(xintercept = SE$INI_p[SE$se_SEL == input$SE], 
+                   alpha = 0.4,  size = 2, color = "tomato3") 
+    }
     
-    plot_SE + 
-      geom_vline(xintercept = SE$INI_p[SE$se_SEL == input$SE], 
-                 alpha = 0.4,  size = 2, color = "tomato3") 
     
     # ggplotly(p, tooltip="text") %>% plotly::config(plot_ly(), displayModeBar = FALSE)
   })
@@ -763,12 +823,73 @@ server <- function(input, output, session) {
     DEMOG_r() %>%
       summarise(across(.cols = all_of(deficit), .fns = ~sum(.x, na.rm = T))) %>%
       pivot_longer(cols = everything( )) %>%
-      mutate(Tot = paste(value),
-             Por = paste(round(value / sum(value) * 100, 1), "%"),
-             value = NULL)
-  }, digits = 0, colnames= 0)
-# Panel: Evolución -------------------------------------------------------------
-
+      mutate(Tot = format(value, big.mark = " "),
+             Por = paste0(format(round(value / sum(value) * 100, 1), 
+                                 decimal.mark = ","), "%"),
+             value = NULL) 
+  }, digits = 0, colnames= 0, align = "lrr" )
+# 5. Movilidad -----------------------------------------------------------------
+  
+### Hexágonos visibles con Indicadores
+  
+  observe({ 
+    
+    req(input$tab1 %in% "MOV")
+    
+    cat(as.character(Sys.time()), "MAPA_MOV_pre", "\n")
+    if(input$tab1 %in% "MOV"){
+      cat(as.character(Sys.time()), "MAPA_MOV", "\n")
+      
+      # nom <- names(indic_SAL)[indic_SAL == input$SAL_sel]
+      # SUBE()
+      
+    }else{
+      leafletProxy("map") %>%
+        clearGroup("MOV") 
+    }
+  })
+  
+### Gráfico transacciones por hora -------------------------------------------------------------
+  
+    output$SUBE_CRONO <- renderPlot({
+      req(nrow(SUBE()) > 0, input$SUBE_DIA_din)
+      
+      if(input$aglo == "Seleccionar (Todos)"){
+        plot_aux <- plot_hr %>%
+          count(dia, hora, wt = n)
+      }else{
+        plot_aux <- plot_hr %>%
+          filter(aglo == input$aglo)
+      }
+      p <- plot_aux %>%
+        mutate(l = ifelse(dia == input$SUBE_DIA_din, "1", "2") ) %>%
+        ggplot() + 
+        geom_line(aes(x = hora, y = n, color = dia,  linetype = l),
+                  alpha = 0.8) +
+        scale_x_continuous("Hora del día", breaks = seq(0, 23, by = 3)) +
+        scale_y_continuous("Total dex transacciones SUBE", labels = \(x) paste0(x/1000, "k"), 
+                           limits = c(0, max(plot_aux$n) *1.05) ) +
+        scale_color_discrete("") +
+        guides(linetype = "none") +
+        theme_minimal() +
+        theme(legend.position="bottom")
+      
+      if(input$SUBE_ch){
+        lim  <-  data.frame(xmin = SUBE_h$ini[SUBE_h$lab == input$Hs],
+                         xmax = SUBE_h$fin[SUBE_h$lab == input$Hs],
+                         ymin = 0,
+                         ymax = max(plot_aux$n) *1.05 ) 
+        
+        p + 
+          geom_rect(data = lim, 
+                    aes(xmin=xmin, xmax = xmax,
+                        ymin = ymin, ymax = ymax), 
+                     alpha = 0.4,  size = 2, fill = "tomato3")
+      }else{
+        p
+      }
+      
+    })
 # 1. Gráfico -------------------------------------------------------------------
 
   output$EPH_plot <- renderPlot({

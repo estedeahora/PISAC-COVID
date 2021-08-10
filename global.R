@@ -8,7 +8,7 @@ library(leaflet)
 library(leaflet.extras)
 library(shinyWidgets)
 library(plotly)
-# library(shinyFeedback)
+library(shinyFeedback)
 
 # Carga de Datos ----------------------------------------------------------
 
@@ -34,8 +34,10 @@ if (!exists("MAPA")) {
 
 # Armar variables para selectores -------------------------------------
 
+# Seleccion de aglomerados
 AGLO <- c("Seleccionar (Todos)", unique(MAPA$AGLOMERADO$aglo))
 
+# Polígonos de barrios
 poligono <- tibble::tribble(
   ~ base,      ~ color,      ~ fill,     ~opacity,
   "MUNI",      "black",      F,          1,
@@ -95,8 +97,7 @@ indic_HAB <- c('Déficit de Vivienda por hogares' = "DEFICIT",
 deficit <- DEMOG %>%
   select('Sin deficit':'Vivienda con Núcleo Allegado Interno + Mejora') %>% names()
 
-# Selectores EPH
-
+# Selectores Pestaña AGLOMERADOS
 indic_EPH <- c('Ingreso de los Hogares' = "ING",
                '% de Personas sin cobertura de salud privada' = "SAL",
                'Indicadores de Ocupación' = "OCU")
@@ -129,6 +130,20 @@ resumen <- rbind(resumen,
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
 
+# DIAS SUBE 
+SUBE_d <- data.frame(val = c("2020.03.11", "2020.06.10", "2020.09.09", "2020.12.10", "2021.03.10"))
+SUBE_d$lab <- SUBE_d$val %>% as.Date(format = "%Y.%m.%d") %>% format(format = "%d %b %Y")
+
+# HORAS SUBE
+
+SUBE_h <- tibble(ini = seq(0, 23, by = 3 ),
+                     fin = seq(2, 23, by = 3 ),
+                     val = paste0(ini, "." , fin),
+                     lab = paste0(ini, " a " ,
+                                  fin + 1, " hs") )
+
+# Gráficos auxiliares -----------------------------------------------------
+
 plot_SE <- SE %>%
   pivot_longer(cols = INI:FAL, names_to = "VAR", values_to = "n") %>%
   filter(!is.na(n) ) %>%
@@ -146,6 +161,22 @@ plot_SE <- SE %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90),
         legend.position = "none")
+
+
+plot_hr <- AGLO_h3_b %>% 
+  st_drop_geometry() %>% 
+  select(aglo, starts_with("SUBE_")) %>%  
+  pivot_longer(cols = -aglo) %>% 
+  mutate(name = str_remove(name, "SUBE_"),
+         dia = str_sub(name, end = 10),
+         hora = str_sub(name, start = 12)) %>% 
+  count(aglo, dia, hora, wt = value) %>% 
+  mutate(dia = factor(dia, levels = sort(unique(dia)),
+                labels = format(as.Date(sort(unique(dia)),
+                                        format = "%Y.%m.%d"),
+                                format = "%d %b %Y") ),
+         hora = as.numeric(hora) ) %>%
+  arrange(aglo, dia, hora) 
 
 # Íconos ------------------------------------------------------------------
 
