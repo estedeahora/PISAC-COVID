@@ -161,10 +161,13 @@ server <- function(input, output, session) {
     }
   })
   
+  s <- reactive({
+    input$aglo %in% c("Seleccionar (Todos)", "Bariloche", "AMGBA", 
+                      "Gran Santa Fe-Paraná", "Gran Mendoza")
+  })
+    
   observe({
-    s <- input$aglo %in% c("Seleccionar (Todos)", "Bariloche", "AMGBA", 
-                           "Gran Santa Fe-Paraná", "Gran Mendoza")
-    shinyFeedback::feedbackWarning(inputId = "aglo", !s & input$tab1 %in% c("MOV"), 
+    shinyFeedback::feedbackWarning(inputId = "aglo", !s() & input$tab1 %in% c("MOV"), 
                                    "Este aglomerado no tiene datos de movilidad")
   })
   
@@ -175,7 +178,7 @@ server <- function(input, output, session) {
   # input$map_bounds
   
   limite <- reactive({
-    
+    cat(as.character(Sys.time()), "LIMITE", "\n")
     req(input$tab1 %in% c("DEM", "HAB"))
     req(input$map_bounds)
     
@@ -309,7 +312,7 @@ server <- function(input, output, session) {
     if(input$tab1 %in% c("DEM", "HAB") ){
       t_res <- DEMOG_r() %>%
         summarise(Nivel = "Selección",
-                  Población = sum(PERSONAS, na.rm = T),
+                  Poblacion = sum(PERSONAS, na.rm = T),
                   Hogares = sum(HOGARES, na.rm = T),
                   Viviendas = sum(VIVIENDAS, na.rm = T),
                   Radios = n())
@@ -388,7 +391,121 @@ server <- function(input, output, session) {
              radio = input$radio,
              blur = input$blur)
   })
-# 2. Demográfico ---------------------------------------------------------------
+
+# 2. Salud ---------------------------------------------------------------------
+
+### Departamentos con Indicadores --------------------------------------------
+
+observe({ 
+  
+  req(input$SAL_sel)
+  
+  cat(as.character(Sys.time()), "MAPA_SAL_pre", "\n")
+  
+  if(input$tab1 %in% "SAL" ){
+    
+    cat(as.character(Sys.time()), "MAPA_SAL", "\n")
+    
+    nom <- names(indic_SAL)[indic_SAL == input$SAL_sel]
+    
+    if(input$SAL_sel == "SALUDno"){
+      # Cobertura de salud
+      
+      r_aux <- DEPTO
+      r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
+      r_aux <- r_aux %>%
+        mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
+                               round(VARIABLE, 1)))
+      r_sel <- NULL
+      l_sel <-  F
+      
+    }else{
+      # Covid 
+      r_aux <- COVID %>% 
+        select(starts_with(input$SAL_sel), cuadro)
+      
+      
+      
+      if(input$COVID_ch == "COVID_T"){
+        # COVID: TOTAL
+        r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
+        l_sel <-  F
+        r_sel <- range(r_aux$VARIABLE)
+        
+      }else{
+        # COVID: Por SE
+        sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
+        VAR <- r_aux[[sel]]
+        
+        if(is.null(VAR)){
+          VAR <- rep(0, nrow(r_aux))
+        }
+        r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
+                             c("MIN", "MAX")] %>% 
+          simplify() 
+        
+        if(input$SAL_sel %in% c("INI", "INT", "CUI")){
+          r_aux$VARIABLE <- log(VAR+1)**2
+          r_aux <- r_aux %>%
+            mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
+                                   "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                   "<br><br><strong>", nom, ":</strong> ", 
+                                   round(VAR, 1)))
+          
+          r_sel <- log(r_sel+1)**2
+          l_sel <-  T
+        }else{
+          r_aux$VARIABLE <- VAR
+          r_aux <- r_aux %>%
+            mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
+                                   "<br>", SE$LAB[SE$se_SEL  == input$SE],
+                                   "<br><br><strong>", nom, ":</strong> ",
+                                   round(VARIABLE, 1)))
+          l_sel <-  F
+          
+        }
+      }
+    }
+    if(l_sel){
+      transf <- function(x) {round(exp(x**(1/2)) - 1)}
+    }else{
+      transf <- function(x) {x}
+    }
+    
+    addRadio("map", data = r_aux, grupo = "SAL", 
+             rango = r_sel, transf = transf,
+             indicador = "VARIABLE", PAL = "YlOrRd") 
+    
+  }else{
+    leafletProxy("map") %>%
+      clearGroup("SAL") %>%
+      clearControls()
+  }
+})
+
+### Gráfico de casos COVID -----------------------------------------------------
+
+output$COVID_CRONO <- renderPlot({
+  if(input$COVID_ch == "COVID_T"){
+    plot_SE
+  }else{
+    plot_SE + 
+      geom_vline(xintercept = SE$INI_p[SE$se_SEL == input$SE], 
+                 alpha = 0.4,  size = 2, color = "tomato3") 
+  }
+  
+  
+  # ggplotly(p, tooltip="text") %>% plotly::config(plot_ly(), displayModeBar = FALSE)
+})
+
+### SE Texto ----------------------------------------------------------------
+
+output$SEL_SE <- renderText({
+  SE$LAB[SE$se_SEL  == input$SE]
+})
+
+
+# 3. Demográfico ---------------------------------------------------------------
   
   # Mapa con envolvente de radios visibles (MIG + POB) -----------------------------------
   # input$p_DEM  %in% c("DEM", "MIG") +  input$map_zoom >= 9 +  RADIO_env()
@@ -411,6 +528,7 @@ server <- function(input, output, session) {
         st_combine() %>%
         leafletProxy("map", data = .) %>%
         clearGroup("ENV") %>%
+        clearControls() %>%
         addPolygons(group = "ENV",
                     color = "azure1",
                     fill = "azure1",
@@ -552,118 +670,6 @@ server <- function(input, output, session) {
       leafletProxy("map") %>%
         clearGroup("CEN_M") 
     }
-  })
-  
-# 3. Salud ---------------------------------------------------------------------
-  
-### Departamentos visibles con Indicadores --------------------------------------------
-  
-  observe({ 
-
-    req(input$SAL_sel)
-
-    cat(as.character(Sys.time()), "MAPA_SAL_pre", "\n")
-
-    if(input$tab1 %in% "SAL" ){
-
-      cat(as.character(Sys.time()), "MAPA_SAL", "\n")
-
-      nom <- names(indic_SAL)[indic_SAL == input$SAL_sel]
-      
-      if(input$SAL_sel == "SALUDno"){
-        # Cobertura de salud
-        
-        r_aux <- DEPTO
-        r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
-        r_aux <- r_aux %>%
-          mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
-                                 round(VARIABLE, 1)))
-        r_sel <- NULL
-        l_sel <-  F
-        
-      }else{
-        # Covid 
-        r_aux <- COVID %>% 
-          select(starts_with(input$SAL_sel), cuadro)
-        
-        
-        
-        if(input$COVID_ch == "COVID_T"){
-          # COVID: TOTAL
-          r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
-          l_sel <-  F
-          r_sel <- range(r_aux$VARIABLE)
-          
-        }else{
-          # COVID: Por SE
-          sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
-          VAR <- r_aux[[sel]]
-          
-          if(is.null(VAR)){
-            VAR <- rep(0, nrow(r_aux))
-          }
-          r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
-                               c("MIN", "MAX")] %>% 
-            simplify() 
-          
-          if(input$SAL_sel %in% c("INI", "INT", "CUI")){
-            r_aux$VARIABLE <- log(VAR+1)**2
-            r_aux <- r_aux %>%
-              mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
-                                     "<br>", SE$LAB[SE$se_SEL  == input$SE],
-                                     "<br><br><strong>", nom, ":</strong> ", 
-                                     round(VAR, 1)))
-            
-            r_sel <- log(r_sel+1)**2
-            l_sel <-  T
-          }else{
-            r_aux$VARIABLE <- VAR
-            r_aux <- r_aux %>%
-              mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
-                                     "<br>", SE$LAB[SE$se_SEL  == input$SE],
-                                     "<br><br><strong>", nom, ":</strong> ",
-                                     round(VARIABLE, 1)))
-            l_sel <-  F
-            
-          }
-        }
-      }
-      if(l_sel){
-        transf <- function(x) {round(exp(x**(1/2)) - 1)}
-      }else{
-        transf <- function(x) {x}
-      }
-      
-      addRadio("map", data = r_aux, grupo = "SAL", 
-               rango = r_sel, transf = transf,
-               indicador = "VARIABLE", PAL = "YlOrRd") 
-      
-    }else{
-      leafletProxy("map") %>%
-        clearGroup("SAL") 
-      }
-  })
-  
-
-### Gráfico de casos COVID -----------------------------------------------------
-  
-  output$COVID_CRONO <- renderPlot({
-    if(input$COVID_ch == "COVID_T"){
-      plot_SE
-    }else{
-      plot_SE + 
-        geom_vline(xintercept = SE$INI_p[SE$se_SEL == input$SE], 
-                   alpha = 0.4,  size = 2, color = "tomato3") 
-    }
-    
-    
-    # ggplotly(p, tooltip="text") %>% plotly::config(plot_ly(), displayModeBar = FALSE)
-  })
-  
-# SE Texto ----------------------------------------------------------------
-
-  output$SEL_SE <- renderText({
-    SE$LAB[SE$se_SEL  == input$SE]
   })
   
 # 4. Hábitat ------------------------------------------------------------
@@ -849,26 +855,118 @@ server <- function(input, output, session) {
     }
   })
   
-### Gráfico transacciones por hora -------------------------------------------------------------
+  
+### Hexágonos con Indicadores --------------------------------------------------
+  
+  
+  observe({ 
+    
+    req(nrow(SUBE()) > 0, input$SUBE_DIA_din)
+    
+    cat(as.character(Sys.time()), "MAPA_MOV_pre", "\n")
+    
+    # if(input$tab1 %in% "MOV"){
+    #   
+    #   cat(as.character(Sys.time()), "MAPA_MOV", "\n")
+    #   
+    #   if(input$SAL_sel == "SALUDno"){
+    #     # Cobertura de salud
+    #     
+    #     r_aux <- DEPTO
+    #     r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
+    #     r_aux <- r_aux %>%
+    #       mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
+    #                              round(VARIABLE, 1)))
+    #     r_sel <- NULL
+    #     l_sel <-  F
+    #     
+    #   }else{
+    #     # Covid 
+    #     r_aux <- COVID %>% 
+    #       select(starts_with(input$SAL_sel), cuadro)
+    #     
+    #     
+    #     
+    #     if(input$COVID_ch == "COVID_T"){
+    #       # COVID: TOTAL
+    #       r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
+    #       l_sel <-  F
+    #       r_sel <- range(r_aux$VARIABLE)
+    #       
+    #     }else{
+    #       # COVID: Por SE
+    #       sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
+    #       VAR <- r_aux[[sel]]
+    #       
+    #       if(is.null(VAR)){
+    #         VAR <- rep(0, nrow(r_aux))
+    #       }
+    #       r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
+    #                            c("MIN", "MAX")] %>% 
+    #         simplify() 
+    #       
+    #       if(input$SAL_sel %in% c("INI", "INT", "CUI")){
+    #         r_aux$VARIABLE <- log(VAR+1)**2
+    #         r_aux <- r_aux %>%
+    #           mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
+    #                                  "<br>", SE$LAB[SE$se_SEL  == input$SE],
+    #                                  "<br><br><strong>", nom, ":</strong> ", 
+    #                                  round(VAR, 1)))
+    #         
+    #         r_sel <- log(r_sel+1)**2
+    #         l_sel <-  T
+    #       }else{
+    #         r_aux$VARIABLE <- VAR
+    #         r_aux <- r_aux %>%
+    #           mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
+    #                                  "<br>", SE$LAB[SE$se_SEL  == input$SE],
+    #                                  "<br><br><strong>", nom, ":</strong> ",
+    #                                  round(VARIABLE, 1)))
+    #         l_sel <-  F
+    #         
+    #       }
+    #     }
+    #   }
+    #   if(l_sel){
+    #     transf <- function(x) {round(exp(x**(1/2)) - 1)}
+    #   }else{
+    #     transf <- function(x) {x}
+    #   }
+    #   
+    #   addRadio("map", data = r_aux, grupo = "SAL", 
+    #            rango = r_sel, transf = transf,
+    #            indicador = "VARIABLE", PAL = "YlOrRd") 
+    #   
+    # }else{
+    #   leafletProxy("map") %>%
+    #     clearGroup("SAL") %>%
+    #     clearControls()
+    # }
+  })
+  
+### Gráfico transacciones por hora ---------------------------------------------
   
     output$SUBE_CRONO <- renderPlot({
+      
+      if(!s()) validate("Este aglomerado no tiene datos de movilidad")
+      
       req(nrow(SUBE()) > 0, input$SUBE_DIA_din)
       
       if(input$aglo == "Seleccionar (Todos)"){
-        plot_aux <- plot_hr %>%
+        db_aux <- hr %>%
           count(dia, hora, wt = n)
       }else{
-        plot_aux <- plot_hr %>%
+        db_aux <- hr %>%
           filter(aglo == input$aglo)
       }
-      p <- plot_aux %>%
+      p <- db_aux %>%
         mutate(l = ifelse(dia == input$SUBE_DIA_din, "1", "2") ) %>%
         ggplot() + 
         geom_line(aes(x = hora, y = n, color = dia,  linetype = l),
                   alpha = 0.8) +
         scale_x_continuous("Hora del día", breaks = seq(0, 23, by = 3)) +
         scale_y_continuous("Total dex transacciones SUBE", labels = \(x) paste0(x/1000, "k"), 
-                           limits = c(0, max(plot_aux$n) *1.05) ) +
+                           limits = c(0, max(db_aux$n) *1.05) ) +
         scale_color_discrete("") +
         guides(linetype = "none") +
         theme_minimal() +
@@ -878,19 +976,21 @@ server <- function(input, output, session) {
         lim  <-  data.frame(xmin = SUBE_h$ini[SUBE_h$lab == input$Hs],
                          xmax = SUBE_h$fin[SUBE_h$lab == input$Hs],
                          ymin = 0,
-                         ymax = max(plot_aux$n) *1.05 ) 
+                         ymax = max(db_aux$n) *1.05 ) 
         
         p + 
           geom_rect(data = lim, 
                     aes(xmin=xmin, xmax = xmax,
                         ymin = ymin, ymax = ymax), 
-                     alpha = 0.4,  size = 2, fill = "tomato3")
+                     alpha = 0.4,  fill = "tomato2")
       }else{
         p
       }
       
     })
-# 1. Gráfico -------------------------------------------------------------------
+# Panel: Aglomerados -----------------------------------------------------------
+  
+### Gráfico de indicadores -----------------------------------------------------
 
   output$EPH_plot <- renderPlot({
 
@@ -980,4 +1080,82 @@ server <- function(input, output, session) {
             strip.text.x = element_text(size = 7), 
             legend.position = "bottom") 
   })
+  
+# Panel: Descarga --------------------------------------------------------------
+  
+  data <- reactive({
+    db <- list()
+    if("R_download" %in% input$download_db){
+      db$Radio <- MAPA$RADIO %>%
+        select(-c(cuadro_DEM, x100H_CUANT, x100H_CUALI)) %>%
+        left_join(DEMOG %>% select(-c(eph_aglome:PERSONAS)),
+                  by = "ID")
+    }
+    if("D_download" %in% input$download_db){
+      db$Depto <- DEPTO %>%
+        select(ID_DTO:provincia, OS:SinCobertura) %>%
+        left_join(st_drop_geometry(COVID ), by = "ID_DTO")
+    }
+    if("H_download" %in% input$download_db){
+      db$Hexag <- AGLO_h3_b
+    }
+    if("L_download" %in% input$download_db){
+      db$Lugar <- bind_rows(INFRAEST, .id = "tipo")
+    }
+    
+    if(!input$download_geo & length(db) > 0 ){
+      db <- map(db, st_drop_geometry)
+    }
+    # shinyFeedback::feedbackWarning(inputId = "download_db", !(length(db) > 0), 
+    #                                "Seleccione al menos una base")
+    db
+  })
+
+  # modal_confirm <- modalDialog(
+  #   "Debe seleccionar algún archivo para descargar",
+  #   title = "Downloading files",
+  #   footer = tagList(
+  #     actionButton("cancel", "Cancel"),
+  #     actionButton("ok", "Delete", class = "btn btn-danger")
+  #   )
+  # )
+  # 
+  # observeEvent(input$downloadData, {
+  #   showModal(modal_confirm)
+  # })
+  # 
+  # observeEvent(input$ok, {
+  #   showNotification("Files deleted")
+  #   removeModal()
+  # })
+  # observeEvent(input$cancel, {
+  #   removeModal()
+  # })
+
+  output$downloadData <- downloadHandler(
+    filename = "TRIP_COVID.zip",
+    
+    content = function(fname) {
+      
+      if(length(data()) > 0){
+        waiter <- waiter::Waiter$new(id = "download_db")
+        waiter$show()
+        
+        if(input$download_geo){
+          path <-  paste0(tempdir(),"/db_", names(data()), ".geojson")
+          walk2(data(), path, st_write)
+        }else{
+          path <-  paste0(tempdir(),"/db_", names(data()), ".csv")
+          walk2(data(), path, write.csv)
+        }
+        zip(zipfile = fname, files = path, flags = "-j")
+        on.exit(waiter$hide())
+      }else{
+        path <- paste0(tempdir(), "/empty")
+        file.create(path )
+        zip(fname, 'empty')
+      }
+    }, contentType = "application/zip"
+  )
+  
 }

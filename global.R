@@ -1,14 +1,17 @@
 # Librerías ---------------------------------------------------------------
 
 library(shiny)
-library(sf)
+library(shinyWidgets)
+library(shinyFeedback)
+library(waiter)
+
 library(tidyverse)
 library(lubridate)
+library(plotly)
+
+library(sf)
 library(leaflet)
 library(leaflet.extras)
-library(shinyWidgets)
-library(plotly)
-library(shinyFeedback)
 
 # Carga de Datos ----------------------------------------------------------
 
@@ -34,7 +37,13 @@ if (!exists("MAPA")) {
 
 # Armar variables para selectores -------------------------------------
 
-# Seleccion de aglomerados
+# Bases para descargar
+db_names <- c('Demográfico y hábitat (Radios)' = "R_download",
+              'Movilidad SUBE (Hexágonos)' = "H_download",
+              'Salud (Departamentos)' = "D_download",
+              'Servicios (Localizaciones)' = "L_download")
+
+# Selección de aglomerados
 AGLO <- c("Seleccionar (Todos)", unique(MAPA$AGLOMERADO$aglo))
 
 # Polígonos de barrios
@@ -120,7 +129,7 @@ CEN <- MAPA$RADIO %>%
 # Datos demográficos resumen
 resumen <- DEMOG %>%
   group_by(Nivel = aglo) %>%
-  summarise(Población = sum(PERSONAS, na.rm = T),
+  summarise(Poblacion = sum(PERSONAS, na.rm = T),
             Hogares = sum(HOGARES, na.rm = T),
             Viviendas = sum(VIVIENDAS, na.rm = T),
             Radios = n())
@@ -130,7 +139,7 @@ resumen <- rbind(resumen,
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
 
-# DIAS SUBE 
+# Base diccionario con días SUBE 
 SUBE_d <- data.frame(val = c("2020.03.11", "2020.06.10", "2020.09.09", "2020.12.10", "2021.03.10"))
 SUBE_d$lab <- SUBE_d$val %>% as.Date(format = "%Y.%m.%d") %>% format(format = "%d %b %Y")
 
@@ -141,6 +150,22 @@ SUBE_h <- tibble(ini = seq(0, 23, by = 3 ),
                      val = paste0(ini, "." , fin),
                      lab = paste0(ini, " a " ,
                                   fin + 1, " hs") )
+
+# Base para gráfico SUBE
+hr <- AGLO_h3_b %>% 
+  st_drop_geometry() %>% 
+  select(aglo, starts_with("SUBE_")) %>%  
+  pivot_longer(cols = -aglo) %>% 
+  mutate(name = str_remove(name, "SUBE_"),
+         dia = str_sub(name, end = 10),
+         hora = str_sub(name, start = 12)) %>% 
+  count(aglo, dia, hora, wt = value) %>% 
+  mutate(dia = factor(dia, levels = sort(unique(dia)),
+                      labels = format(as.Date(sort(unique(dia)),
+                                              format = "%Y.%m.%d"),
+                                      format = "%d %b %Y") ),
+         hora = as.numeric(hora) ) %>%
+  arrange(aglo, dia, hora) 
 
 # Gráficos auxiliares -----------------------------------------------------
 
@@ -161,22 +186,6 @@ plot_SE <- SE %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90),
         legend.position = "none")
-
-
-plot_hr <- AGLO_h3_b %>% 
-  st_drop_geometry() %>% 
-  select(aglo, starts_with("SUBE_")) %>%  
-  pivot_longer(cols = -aglo) %>% 
-  mutate(name = str_remove(name, "SUBE_"),
-         dia = str_sub(name, end = 10),
-         hora = str_sub(name, start = 12)) %>% 
-  count(aglo, dia, hora, wt = value) %>% 
-  mutate(dia = factor(dia, levels = sort(unique(dia)),
-                labels = format(as.Date(sort(unique(dia)),
-                                        format = "%Y.%m.%d"),
-                                format = "%d %b %Y") ),
-         hora = as.numeric(hora) ) %>%
-  arrange(aglo, dia, hora) 
 
 # Íconos ------------------------------------------------------------------
 

@@ -1,5 +1,6 @@
 ui <- fluidPage(#theme = shinytheme("united"),
   shinyFeedback::useShinyFeedback(),
+  waiter::use_waitress(),
   tabsetPanel(id = "tab_gral",
     tabPanel("Cartografía", icon = icon("map"),
              # Encabezado para seleccionar aglomerados y polígonos principales
@@ -137,7 +138,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                    plotlyOutput("piramide")
                                           ),
                                           # Sub Panel de Variables para población
-                                          tabPanel("Población", value = "POB",
+                                          tabPanel("Poblacion", value = "POB",
                                                    # icon = icon("user"),
                                                    selectInput("POB_sel", "Elija indicador", choices = indic_POB),
                                                    # sliderInput("lim", "", value = c(0, 100), min = 0, max = 100),
@@ -225,7 +226,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                           id = "SUBE",
                                           type = "hidden",
                                           tabPanelBody("SUBE_T", 
-                                                       HTML("<br><p>  &nbsp</p><br>" )),
+                                                       HTML("<br><p>&nbsp</p><br>" )),
                                           tabPanelBody("SUBE_C",
                                                        sliderTextInput("Hs", "Hora del día", 
                                                                        animate = TRUE,
@@ -293,24 +294,52 @@ ui <- fluidPage(#theme = shinytheme("united"),
              )
     ),
     tabPanel("Proyecto", icon = icon("question"),
-             column(width = 6,
-               h1("Acerca del proyecto"),
-               HTML("Esta aplicación fue desarrollada en el marco del Proyecto <em>La implementación de políticas públicas para dar respuesta a la crisis desatada por la pandemia COVID-19: Una mirada desde las relaciones intergubernamentales y las redes de políticas</em>. El mismo es parte del grupo de proyectos asociativos de investigación en Ciencias Sociales y Humanas para la generación de conocimientos a partir del estudio de la sociedad argentina (PISAC) en la pandemia y la postpandemia del COVID-19."),
-               HTML("<br><br>Los PISACS son impulsados por la Agencia Nacional de Promoción de la Investigación, el Desarrollo Tecnológico y la Innovación (Agencia I+D+i ) y financiados por el Fondo para la Investigación Científica y Tecnológica (FONCYT)."),
-               HTML("<br><br>Este proyecto está dirigido por la Dra. María Mercedes Di Virgilio (UBA, IIGG/ CONICET) y se encuentra conformado por 11 grupos de investigación (nodos) de distintas regiones e instituciones de Argentina."),
-               HTML("<br><a href = 'http://tripcovidiigg.sociales.uba.ar/'> Saber más</a>"),
-               h2("Cómo citar..."),
-               HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'https://estedeahora.shinyapps.io/PISAC-COVID/'> https://estedeahora.shinyapps.io/PISAC-COVID/ </a>"),
-               HTML("<br> <br>
+             sidebarLayout(
+               # Panel de selección
+               mainPanel(width = 6,
+                 # column(width = 6,
+                 div(style="margin-right: 60px; margin-left: 40px;",
+                 h1("Acerca del proyecto"),
+                 HTML("Esta aplicación fue desarrollada en el marco del Proyecto <em>La implementación de políticas públicas para dar respuesta a la crisis desatada por la pandemia COVID-19: Una mirada desde las relaciones intergubernamentales y las redes de políticas</em>. El mismo es parte del grupo de proyectos asociativos de investigación en Ciencias Sociales y Humanas para la generación de conocimientos a partir del estudio de la sociedad argentina (PISAC) en la pandemia y la postpandemia del COVID-19."),
+                 HTML("<br><br>Los PISACS son impulsados por la Agencia Nacional de Promoción de la Investigación, el Desarrollo Tecnológico y la Innovación (Agencia I+D+i ) y financiados por el Fondo para la Investigación Científica y Tecnológica (FONCYT)."),
+                 HTML("<br><br>Este proyecto está dirigido por la Dra. María Mercedes Di Virgilio (UBA, IIGG/ CONICET) y se encuentra conformado por 11 grupos de investigación (nodos) de distintas regiones e instituciones de Argentina."),
+                 HTML("<br><a href = 'http://tripcovidiigg.sociales.uba.ar/'> Saber más</a>"),
+                 h2("Cómo citar..."),
+                 HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'https://estedeahora.shinyapps.io/PISAC-COVID/'> https://estedeahora.shinyapps.io/PISAC-COVID/ </a>"),
+                 HTML("<br> <br>
                     <p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")
-             ),
-             column(width = 1),
-             column(width = 2, 
-                    h2("Descargar datos"),
-                    HTML("<br>INACTIVO - WIP<br>"),
-                    downloadButton("down", label = "Descarga")
+                 )
+               ),
+               
+               sidebarPanel(width = 3, position = "right",
+                            
+                            h2("Descargar datos"),
+                            HTML("<br>"),
+                            
+                            downloadButton(outputId = "downloadData", label = "Descarga", style = "width:80%;height:40px;"),
+                            
+                            HTML("<p>&nbsp</p><br>"),
+                            
+                            pickerInput(
+                              inputId = "download_db",
+                              width = "80%",
+                              label = "Seleccione bases a descargar",
+                              choices = db_names,
+                              options = list(
+                                `actions-box` = TRUE,
+                                `selected-text-format` = "count > 3"),
+                              multiple = TRUE),
+                            
+                            switchInput(
+                              inputId = "download_geo", 
+                              label = "GeoJson", 
+                              value = FALSE, labelWidth = "50",
+                              onLabel = "Sí",  offLabel = "No", 
+                              onStatus = "danger", size = "mini"),
+                            
+                            HTML("<p>&nbsp</p><br><p>&nbsp</p><br><p>&nbsp</p><br>"),
+               )
              )
-             
     )
   )
 )
