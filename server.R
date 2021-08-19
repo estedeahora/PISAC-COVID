@@ -77,7 +77,9 @@ server <- function(input, output, session) {
       choices = SUBE_d$lab, 
       selected = value,
       from_min = ini,
-      hide_min_max = T #, grid = T
+      animate = animationOptions(interval = 3000),
+      grid = T,
+      hide_min_max = T
     )
   })
   
@@ -152,18 +154,39 @@ server <- function(input, output, session) {
   SUBE <- reactive({
     
     req(input$tab1 %in% c("MOV"))
+    cat(as.character(Sys.time()), "REAC_SUBE", "\n")
     
     # req(!s, cancelOutput = TRUE)
     if(input$aglo == "Seleccionar (Todos)"){
-      AGLO_h3_b
+      AGLO_h3_c
     }else{
-      AGLO_h3_b %>% filter(aglo %in% input$aglo)
+      AGLO_h3_c %>% filter(aglo %in% input$aglo)
     }
   })
   
   s <- reactive({
     input$aglo %in% c("Seleccionar (Todos)", "Bariloche", "AMGBA", 
                       "Gran Santa Fe-Paraná", "Gran Mendoza")
+  })
+  
+  SUBE_rango <- reactive({
+    cat(as.character(Sys.time()), "REAC_SUBE_rango", "\n")
+    
+    if(!input$SUBE_rel){
+      db <- SUBE() %>% 
+        st_drop_geometry()
+      
+      nom <- names(db)
+
+      if(input$SUBE_ch){  
+        sel <- str_starts(nom, "SUBE_") 
+      }else{
+        sel <- str_starts(nom, "TOTAL_") 
+      }
+      db[sel] |> simplify() |> quantile(na.rm = T, probs = seq (0, 1, 0.05)) |> round() |>  unique()
+      
+    } 
+    
   })
     
   observe({
@@ -513,7 +536,7 @@ output$SEL_SE <- renderText({
   observe({
     
     # req(nrow(RADIO_env()))
-    cat(as.character(Sys.time()), "MAPA_ENV", "\n")
+    cat(as.character(Sys.time()), "MAPA_ENV_PRE", "\n")
     
     req(input$p_DEM)
     req(input$map_zoom)
@@ -522,6 +545,7 @@ output$SEL_SE <- renderText({
        input$tab1 == c("DEM") && 
        input$map_zoom >= 9){
       # if(nrow(RADIO_env()) > 0){
+      cat(as.character(Sys.time()), "MAPA_ENV", "\n")
       req(RADIO_r())
       
       RADIO_r() %>%
@@ -861,87 +885,85 @@ output$SEL_SE <- renderText({
   
   observe({ 
     
-    req(nrow(SUBE()) > 0, input$SUBE_DIA_din)
-    
+    req(input$SUBE_DIA_din)
+    if(!s()) req(F)
+      
     cat(as.character(Sys.time()), "MAPA_MOV_pre", "\n")
     
-    # if(input$tab1 %in% "MOV"){
-    #   
-    #   cat(as.character(Sys.time()), "MAPA_MOV", "\n")
-    #   
-    #   if(input$SAL_sel == "SALUDno"){
-    #     # Cobertura de salud
-    #     
-    #     r_aux <- DEPTO
-    #     r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
-    #     r_aux <- r_aux %>%
-    #       mutate(cuadro = paste0("<strong>", nom, ":</strong> ",
-    #                              round(VARIABLE, 1)))
-    #     r_sel <- NULL
-    #     l_sel <-  F
-    #     
-    #   }else{
-    #     # Covid 
-    #     r_aux <- COVID %>% 
-    #       select(starts_with(input$SAL_sel), cuadro)
-    #     
-    #     
-    #     
-    #     if(input$COVID_ch == "COVID_T"){
-    #       # COVID: TOTAL
-    #       r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
-    #       l_sel <-  F
-    #       r_sel <- range(r_aux$VARIABLE)
-    #       
-    #     }else{
-    #       # COVID: Por SE
-    #       sel <- paste0(input$SAL_sel, "_", SE$se_y[SE$se_SEL  == input$SE])
-    #       VAR <- r_aux[[sel]]
-    #       
-    #       if(is.null(VAR)){
-    #         VAR <- rep(0, nrow(r_aux))
-    #       }
-    #       r_sel <- rango_COVID[rango_COVID$SEL == input$SAL_sel,
-    #                            c("MIN", "MAX")] %>% 
-    #         simplify() 
-    #       
-    #       if(input$SAL_sel %in% c("INI", "INT", "CUI")){
-    #         r_aux$VARIABLE <- log(VAR+1)**2
-    #         r_aux <- r_aux %>%
-    #           mutate(cuadro = paste0("<strong>", input$SE, "</strong>",  
-    #                                  "<br>", SE$LAB[SE$se_SEL  == input$SE],
-    #                                  "<br><br><strong>", nom, ":</strong> ", 
-    #                                  round(VAR, 1)))
-    #         
-    #         r_sel <- log(r_sel+1)**2
-    #         l_sel <-  T
-    #       }else{
-    #         r_aux$VARIABLE <- VAR
-    #         r_aux <- r_aux %>%
-    #           mutate(cuadro = paste0("<strong>", input$SE, "</strong>",
-    #                                  "<br>", SE$LAB[SE$se_SEL  == input$SE],
-    #                                  "<br><br><strong>", nom, ":</strong> ",
-    #                                  round(VARIABLE, 1)))
-    #         l_sel <-  F
-    #         
-    #       }
-    #     }
-    #   }
-    #   if(l_sel){
-    #     transf <- function(x) {round(exp(x**(1/2)) - 1)}
-    #   }else{
-    #     transf <- function(x) {x}
-    #   }
-    #   
-    #   addRadio("map", data = r_aux, grupo = "SAL", 
-    #            rango = r_sel, transf = transf,
-    #            indicador = "VARIABLE", PAL = "YlOrRd") 
-    #   
-    # }else{
-    #   leafletProxy("map") %>%
-    #     clearGroup("SAL") %>%
-    #     clearControls()
-    # }
+    if(input$tab1 %in% "MOV"){
+
+      cat(as.character(Sys.time()), "MAPA_MOV", "\n")
+      
+      d <- SUBE_d$val[SUBE_d$lab == input$SUBE_DIA_din]
+      h <- SUBE_h$val[SUBE_h$lab == input$Hs]
+      
+      if(input$SUBE_ch){
+        nom <- nom_t <- paste("SUBE", d, h, sep = "_")
+        cuadro <- paste0("<strong>Día: ", input$SUBE_DIA_din, 
+                         ". Rango horario: ",  input$Hs, ".</strong>")
+      }else{
+        nom <- nom_t <- paste("TOTAL", d, sep = "_")
+        cuadro <- paste0("<strong>Día: ", input$SUBE_DIA_din, ".</strong>")
+      }
+      
+      if(input$SUBE_rel){
+        nom <- paste("p", nom, sep = "_")
+        
+        cortes <- c(seq(0, 1, by = 0.20), 1.5, 2, 100)
+        PAL_l <- c(paste0(lag(cortes*100), "-",
+                         cortes*100,  "%")[-length(cortes)][-1], 
+                            "+200%")
+        PAL <- "BrBG"
+        inv <- T
+      }else{
+        cortes <- SUBE_rango()
+        PAL <- "viridis"
+        inv <- F
+      }
+      
+      req(nom != "p_TOTAL_2020.03.11")
+      
+      r_aux <- SUBE() %>%
+        mutate(VARIABLE = .data[[nom]],
+               cuadro =  paste0(cuadro, "<br>Transacciones totales: ", .data[[nom_t]]),
+               cuadro = case_when(input$SUBE_rel & !is.na(VARIABLE) ~ paste0(cuadro, 
+                                                                             "<br>% de variación (referencia 11 marzo 2020): ",
+                                                                             round(VARIABLE*100, 1), "%"),
+                                  T ~ paste0(cuadro) )
+        )
+      
+      PAL_f <- colorBin(palette = PAL, reverse = inv,
+                        domain = r_aux$VARIABLE, 
+                        bins = cortes, na.color = "#A9A9A9")
+      
+      mapa <- leafletProxy("map", data = r_aux) %>%
+        clearGroup("MOV") %>%
+        clearControls() %>%
+        addPolygons(group = "MOV", smoothFactor = 0.5,
+                    popup = ~cuadro,
+                    opacity = 1.0, color = "#BDBDBD", weight = 0.3,
+                    fillColor = ~PAL_f(VARIABLE), fillOpacity = 0.4,
+                    highlightOptions = highlightOptions(color = "black", weight = 1,
+                                                        bringToFront = TRUE) ) 
+      
+      if(input$SUBE_rel){
+        PAL_c <- PAL_f(cortes)[-length(cortes)] # hex codes
+        
+        mapa %>%
+          addLegend(colors = PAL_c, labels = PAL_l,
+                    na.label = "Sin viajes", title = "Viajes Respecto<br>a Marzo 2020")
+                  # na.label = "NA"
+      }else{
+        mapa %>%
+          addLegend(pal = PAL_f , values = ~VARIABLE, 
+                    na.label = "Sin viajes", title = "Viajes Totales")
+                    
+      }
+    }else{
+      leafletProxy("map") %>%
+        clearGroup("MOV") %>%
+        clearControls()
+    }
   })
   
 ### Gráfico transacciones por hora ---------------------------------------------

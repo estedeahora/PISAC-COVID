@@ -8,6 +8,7 @@ library(waiter)
 library(tidyverse)
 library(lubridate)
 library(plotly)
+library(viridis)
 
 library(sf)
 library(leaflet)
@@ -24,9 +25,21 @@ if (!exists("MAPA")) {
   load("data/_data.RData")
   load("data/COVID.RData")
   load("data/SUBE.RData")
-  
+
   ref <- read.csv("data/ref.csv")
   # ref <- readxl::read_xlsx("data/ref.xlsx")
+
+  # AGLO_h3_c <- AGLO_h3_c %>%
+  #   mutate(across(.cols = starts_with("TOTAL_"),
+  #                 .fns = ~.x/TOTAL_2020.03.11,
+  #                 .names = "p_{.col}"),
+  #          across(.cols = starts_with("p_TOTAL"),
+  #                 .fns = ~case_when(is.nan(.x ) | is.infinite(.x) ~ NA_real_,
+  #                                   # is.infinite(.x) ~ 1,
+  #                                   T ~ .x) )) %>%
+  #   filter(TOTAL!=0)
+  # AGLO_h3_b <- AGLO_h3_b %>%
+  #   filter(TOTAL!=0)
 
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
@@ -139,7 +152,7 @@ resumen <- rbind(resumen,
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
 
-# Base diccionario con días SUBE 
+# Base diccionario con días SUBE
 SUBE_d <- data.frame(val = c("2020.03.11", "2020.06.10", "2020.09.09", "2020.12.10", "2021.03.10"))
 SUBE_d$lab <- SUBE_d$val %>% as.Date(format = "%Y.%m.%d") %>% format(format = "%d %b %Y")
 
@@ -152,29 +165,29 @@ SUBE_h <- tibble(ini = seq(0, 23, by = 3 ),
                                   fin + 1, " hs") )
 
 # Base para gráfico SUBE
-hr <- AGLO_h3_b %>% 
-  st_drop_geometry() %>% 
-  select(aglo, starts_with("SUBE_")) %>%  
-  pivot_longer(cols = -aglo) %>% 
+hr <- AGLO_h3_b %>%
+  st_drop_geometry() %>%
+  select(aglo, starts_with("SUBE_")) %>%
+  pivot_longer(cols = -aglo) %>%
   mutate(name = str_remove(name, "SUBE_"),
          dia = str_sub(name, end = 10),
-         hora = str_sub(name, start = 12)) %>% 
-  count(aglo, dia, hora, wt = value) %>% 
+         hora = str_sub(name, start = 12)) %>%
+  count(aglo, dia, hora, wt = value) %>%
   mutate(dia = factor(dia, levels = sort(unique(dia)),
                       labels = format(as.Date(sort(unique(dia)),
                                               format = "%Y.%m.%d"),
                                       format = "%d %b %Y") ),
          hora = as.numeric(hora) ) %>%
-  arrange(aglo, dia, hora) 
+  arrange(aglo, dia, hora)
 
 # Gráficos auxiliares -----------------------------------------------------
 
 plot_SE <- SE %>%
   pivot_longer(cols = INI:FAL, names_to = "VAR", values_to = "n") %>%
   filter(!is.na(n) ) %>%
-  left_join(data.frame(VAR = c("INI", #"INT", "CUI", 
+  left_join(data.frame(VAR = c("INI", #"INT", "CUI",
                                "FAL"),
-                       LAB_VAR = c("Casos Positivos", #"Internados", "Cuidados intensivos", 
+                       LAB_VAR = c("Casos Positivos", #"Internados", "Cuidados intensivos",
                                    "Fallecidos")), by = "VAR") %>%
   mutate(label = paste(se_SEL, "<br>", LAB_VAR, n ) ) %>%
   ggplot(aes(x = INI_p, y = n, group = VAR, color = VAR, text = sprintf(label))) +
@@ -306,7 +319,7 @@ paleta <- function(data = data, indic = "indic",
         PAL_f <- colorQuantile(PAL, data[[indic]], n = 9)
       }else{
         # Menos de 9 percentiles -> Escala continua con rango
-        PAL_f <- colorNumeric(PAL, range(data[[indic]]))
+        PAL_f <- colorNumeric(PAL, range(data[[indic]], na.rm = T) )
       }
     }else{
       # Rango

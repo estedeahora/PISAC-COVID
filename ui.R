@@ -229,8 +229,9 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                        HTML("<br><p>&nbsp</p><br>" )),
                                           tabPanelBody("SUBE_C",
                                                        sliderTextInput("Hs", "Hora del día", 
-                                                                       animate = TRUE,
+                                                                       animate = animationOptions(interval = 3000),
                                                                        choices = SUBE_h$lab,
+                                                                       grid = T,
                                                                        force_edges = TRUE,
                                                                        width = '100%'
                                                        )
