@@ -29,18 +29,6 @@ if (!exists("MAPA")) {
   ref <- read.csv("data/ref.csv")
   # ref <- readxl::read_xlsx("data/ref.xlsx")
 
-  # AGLO_h3_c <- AGLO_h3_c %>%
-  #   mutate(across(.cols = starts_with("TOTAL_"),
-  #                 .fns = ~.x/TOTAL_2020.03.11,
-  #                 .names = "p_{.col}"),
-  #          across(.cols = starts_with("p_TOTAL"),
-  #                 .fns = ~case_when(is.nan(.x ) | is.infinite(.x) ~ NA_real_,
-  #                                   # is.infinite(.x) ~ 1,
-  #                                   T ~ .x) )) %>%
-  #   filter(TOTAL!=0)
-  # AGLO_h3_b <- AGLO_h3_b %>%
-  #   filter(TOTAL!=0)
-
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
 
