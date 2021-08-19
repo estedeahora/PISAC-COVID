@@ -313,8 +313,8 @@ paleta <- function(data = data, indic = "indic",
   if(length(unique(data[[indic]]) ) > 1 | !is.null(rango)){
     if(is.null(rango) ){
       l <- length( unique( quantile(data[[indic]], na.rm = T,
-                                    probs = seq(0, 1, length.out = 9) )  ) )
-      if(l >= 9){
+                                    probs = seq(0, 1, length.out = 10) )  ) )
+      if(l > 9){
         # 9 percentiles
         PAL_f <- colorQuantile(PAL, data[[indic]], n = 9)
       }else{
