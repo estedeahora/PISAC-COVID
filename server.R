@@ -124,7 +124,7 @@ server <- function(input, output, session) {
 ### Selección de aglomerados --------------------------------------------------
   # input$aglo
   
-  ## MAPA 
+  ## MAPA
   POLIGONO <- reactive({
     cat(as.character(Sys.time()), "POLIGONO", "\n")
     

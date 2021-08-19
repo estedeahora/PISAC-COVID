@@ -3,7 +3,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
   waiter::use_waitress(),
   tabsetPanel(id = "tab_gral",
     tabPanel("Cartografía", icon = icon("map"),
-             # Encabezado para seleccionar aglomerados y polígonos principales
+             # Encabezado para seleccionar aglomerados y polígonos principales 
              fluidRow(
                column(width = 4,
                       fluidRow(

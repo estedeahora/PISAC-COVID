@@ -16,7 +16,7 @@ library(leaflet.extras)
 
 # Carga de Datos ----------------------------------------------------------
 
-# options(OutDec= ",", big.mark = T)
+# options(OutDec= ",", big.mark = T) 
 # plotly::config(plot_ly(), displayModeBar = FALSE)
 
 
