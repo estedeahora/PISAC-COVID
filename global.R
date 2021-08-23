@@ -16,19 +16,21 @@ library(leaflet.extras)
 
 # Carga de Datos ----------------------------------------------------------
 
-# options(OutDec= ",", big.mark = T) 
-# plotly::config(plot_ly(), displayModeBar = FALSE)
-
-
 if (!exists("MAPA")) {
   # Cargar datos
   load("data/_data.RData")
   load("data/COVID.RData")
   load("data/SUBE.RData")
 
-  ref <- read.csv("data/ref.csv")
+  ref <- read.csv("data/ref.csv") %>% 
+    map_df(function(x) if(is.character(x)) iconv(x, "latin1", to = "UTF-8") )
+  
   # ref <- readxl::read_xlsx("data/ref.xlsx")
 
+  DEMOG <- DEMOG %>%
+    rename('Otros latinoamericanos' = "América Otros",
+           'África' = "Africa")
+  
   DEPTO <- MAPA$DEPTO
   MAPA$DEPTO <- NULL
 
@@ -55,7 +57,7 @@ poligono <- tibble::tribble(
   "COUNTRY",   "green",      T,          0)
 
 var_polig <-  poligono$base
-names(var_polig) <- c('Municipio', 'Barrio Popular', 'Country')
+names(var_polig) <- c('Municipio', 'Barrio Popular', 'Urb. cerrada')
 
 # Escala para Pirámide
 l <- c(paste(seq(0, 90, by = 5),
@@ -72,6 +74,7 @@ infraestructura <- c('Salud General' = "General",
                      'Sevicios Financieros' = "financiero",
                      'Seccional Policial' = "seguridad")
 
+
 # Selectores DEM:POB
 indic_POB <- c('Edad Promedio' = "EDAD",
                'Tasa de Juventud' = "t_JUV",
@@ -80,10 +83,13 @@ indic_POB <- c('Edad Promedio' = "EDAD",
                '% de Personas Con Estudios Universitarios Completos' = "SUP_p")
 
 # Selectores DEM:MIG
+
 paises <- DEMOG %>%
-  select('América Otros':'Asia y Oceanía') %>% names()
-paises <- list(Sudamericanos = paises[c(2:4, 6:7, 9, 1)],
-               Otros = paises[c(5, 10, 8)])
+  select('Otros latinoamericanos':'Asia y Oceanía') %>% 
+  names()
+
+paises <- list(Latinoamericanos = paises[c(2:4, 6:7, 9, 1)],
+               Otros = paises[c(5, 10, 11, 8)])
 
 # Selectores de SAL
 indic_SAL <- c('% de Personas Con Cobertura de Salud sólo sistema estatal' = "SALUDno",
@@ -130,13 +136,13 @@ CEN <- MAPA$RADIO %>%
 # Datos demográficos resumen
 resumen <- DEMOG %>%
   group_by(Nivel = aglo) %>%
-  summarise(Poblacion = sum(PERSONAS, na.rm = T),
+  summarise(Personas = sum(PERSONAS, na.rm = T),
             Hogares = sum(HOGARES, na.rm = T),
             Viviendas = sum(VIVIENDAS, na.rm = T),
             Radios = n())
 
 resumen <- rbind(resumen,
-                c("Total Aglomerados", apply(resumen[-1], 2, sum ))) %>%
+                c("Total aglomerados", apply(resumen[-1], 2, sum ))) %>%
   as.data.frame()
 rownames(resumen) <- resumen$Nivel
 

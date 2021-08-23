@@ -113,8 +113,8 @@ server <- function(input, output, session) {
     
     DEMOG_r() %>%
       select(ID, eph_aglome, aglo, PERSONAS, MIGRANTE,
-             'América Otros':'Asia y Oceanía') %>%
-      summarise(across(.cols = 'América Otros':'Asia y Oceanía', 
+             'Otros latinoamericanos':'Asia y Oceanía') %>%
+      summarise(across(.cols = 'Otros latinoamericanos':'Asia y Oceanía', 
                        .fns = ~sum(.x, na.rm = T)) ) %>%
       pivot_longer(cols = everything() ) %>%
       arrange(value)  %>%
@@ -327,15 +327,15 @@ server <- function(input, output, session) {
     req(input$aglo)
     
     if(input$aglo == "Seleccionar (Todos)"){
-      sel <- c("Total Aglomerados")
+      sel <- c("Total aglomerados")
     }else{
-      sel <- c("Total Aglomerados", input$aglo)
+      sel <- c("Total aglomerados", input$aglo)
     }
     
     if(input$tab1 %in% c("DEM", "HAB") ){
       t_res <- DEMOG_r() %>%
         summarise(Nivel = "Selección",
-                  Poblacion = sum(PERSONAS, na.rm = T),
+                  Personas = sum(PERSONAS, na.rm = T),
                   Hogares = sum(HOGARES, na.rm = T),
                   Viviendas = sum(VIVIENDAS, na.rm = T),
                   Radios = n())
@@ -638,7 +638,7 @@ output$SEL_SE <- renderText({
     data.frame(v = RADIO_r()[[input$POB_sel]]) %>%
         ggplot(aes(x = v)) + 
         geom_density(color = "tomato3") + 
-        labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
+        labs(x  = paste0(nom, " en los radios visualizados"), y = "Densidad") +
         theme_minimal() 
       
   })
@@ -814,14 +814,14 @@ output$SEL_SE <- renderText({
         data.frame(v = RADIO_r()[[input$HAB_sel]] / RADIO_r()$Hogares2010 * 100) %>%
           ggplot(aes(x = v)) + 
           geom_density(color = "tomato3") + 
-          labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
+          labs(x  = paste0(nom, " en los radios visualizados"), y = "Densidad") +
           theme_minimal() 
         
       }else{
         data.frame(v = RADIO_r()[[input$HAB_sel]]) %>%
           ggplot(aes(x = v)) + 
           geom_density(color = "tomato3") + 
-          labs(x  = paste0(nom, "en los radios visualizados"), y = "Densidad") +
+          labs(x  = paste0(nom, " en los radios visualizados"), y = "Densidad") +
           theme_minimal() 
       }
   })
@@ -987,7 +987,7 @@ output$SEL_SE <- renderText({
         geom_line(aes(x = hora, y = n, color = dia,  linetype = l),
                   alpha = 0.8) +
         scale_x_continuous("Hora del día", breaks = seq(0, 23, by = 3)) +
-        scale_y_continuous("Total dex transacciones SUBE", labels = \(x) paste0(x/1000, "k"), 
+        scale_y_continuous("Total de transacciones SUBE", labels = \(x) paste0(x/1000, "k"), 
                            limits = c(0, max(db_aux$n) *1.05) ) +
         scale_color_discrete("") +
         guides(linetype = "none") +
@@ -998,7 +998,7 @@ output$SEL_SE <- renderText({
         lim  <-  data.frame(xmin = SUBE_h$ini[SUBE_h$lab == input$Hs],
                          xmax = SUBE_h$fin[SUBE_h$lab == input$Hs],
                          ymin = 0,
-                         ymax = max(db_aux$n) *1.05 ) 
+                         ymax = max(db_aux$n) *1.05) 
         
         p + 
           geom_rect(data = lim, 

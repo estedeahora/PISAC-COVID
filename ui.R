@@ -8,7 +8,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                column(width = 4,
                       fluidRow(
                         column(width = 12,
-                               selectInput("aglo", "Elija el Aglomerado",
+                               selectInput("aglo", "Elija el aglomerado",
                                            choices = AGLO)
                         )
                       ),
@@ -38,11 +38,13 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                           choices = list('Salud' = infraestructura[1:2],
                                                          'Educación' = infraestructura[3:5],
                                                          'Servicios urbanos' = infraestructura[6:8]),
-                                          # choicesOpt = list(content = icon_sel$img),
-                                          options = list(
-                                            `actions-box` = TRUE,
-                                            `selected-text-format` = "count > 3"
-                                          ),
+                                          options = pickerOptions(
+                                            actionsBox = TRUE,
+                                            selectedTextFormat = "count > 3",
+                                            noneSelectedText = "Sin selección",
+                                            selectAllText = "Seleccionar todos",
+                                            deselectAllText	= "Deseleccionar todos",
+                                            countSelectedText = "{0} servicios seleccionados"),
                                           multiple = TRUE
                                         ),
                                         switchInput(inputId = "clu", label = "Clusters", 
@@ -152,14 +154,16 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                      label = "Seleccion e grupos migrantes",
                                                      choices = paises,
                                                      selected = unname(unlist(paises)),
-                                                     options = list(
-                                                       `actions-box` = TRUE,
-                                                       `selected-text-format` = "count > 3"
-                                                     ),
+                                                     options = pickerOptions(
+                                                       actionsBox = TRUE,
+                                                       selectedTextFormat = "count > 3",
+                                                       noneSelectedText = "Sin países seleccionados",
+                                                       selectAllText = "Seleccionar todos",
+                                                       deselectAllText	= "Deseleccionar todos",
+                                                       countSelectedText = "{0} países seleccionados"),
                                                      multiple = TRUE
                                                    ),
                                                    plotOutput("migrantes", click = "click_MIGRA")
-                                                   
                                           )
                                         )
                                ),
@@ -177,7 +181,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                          label = "", selected = "MIXTO",
                                                          choices = c("Cuantitativo" = "CUANTI",
                                                                      "Mixto" = "MIXTO",
-                                                                     "Cuanlitativo" = "CUALI"),
+                                                                     "Cualitativo" = "CUALI"),
                                                          justified = TRUE,
                                                          # status = "primary",
                                                          checkIcon = list(
@@ -273,10 +277,13 @@ ui <- fluidPage(#theme = shinytheme("united"),
                    inputId = "EPH_aglo",
                    label = "Seleccione Aglomerados para mostrar",
                    choices = unique(EPH$I$LAB),
-                   options = list(
-                     `actions-box` = TRUE,
-                     `selected-text-format` = "count > 3"
-                   ),
+                   options = pickerOptions(
+                     actionsBox = TRUE,
+                     selectedTextFormat = "count > 3",
+                     noneSelectedText = "Sin selección",
+                     selectAllText = "Seleccionar todos",
+                     deselectAllText	= "Deseleccionar todos",
+                     countSelectedText = "{0} aglomerados seleccionados"),
                    multiple = TRUE
                  ),
                  pickerInput(
