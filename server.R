@@ -584,7 +584,14 @@ output$SEL_SE <- renderText({
       scale_y_continuous(labels =  function(br) paste0(abs(br)/1000, "k")) +
       theme_minimal()
     
-    ggplotly(p, tooltip="text") %>% plotly::config(plot_ly(), displayModeBar = FALSE)
+    ggplotly(p, tooltip="text") %>% 
+      plotly::config(displaylogo = FALSE,
+                     modeBarButtonsToRemove = list(
+                       'sendDataToCloud', 'autoScale2d', 'resetScale2d',
+                       'zoom2d', 'pan2d', 'select2d', 'lasso2d', 'toggleSpikelines',
+                       'zoomIn2d', 'zoomOut2d','hoverCompareCartesian'))
+      # plotly::config(plot_ly(), 
+      #                displayModeBar = FALSE)
   
   })
 
@@ -648,17 +655,22 @@ output$SEL_SE <- renderText({
   # Gráfico de Torta ------------------------------------------------------
   # MIGRA_r()
   
-  output$migrantes <- renderPlot({
+  output$migrantes <- renderPlotly({
     
-    req(input$p_DEM %in% c("MIG") & length(input$MIG_sel) > 0 )
+    req(input$p_DEM %in% c("MIG") & length(input$MIG_sel) > 1 )
     cat(as.character(Sys.time()), "TORTA_MIG", "\n")
-    
+
     MIGRA_r() %>%
-      ggplot(aes(x = "", y = value, fill = name)) +
-      geom_bar(stat = "identity", width = 2, color = "white") +
-      coord_polar("y", start = 0) +
-      labs (fill = "País / Región") +
-      theme_void()
+      plot_ly(labels = ~name, values = ~value, 
+              showlegend = FALSE, type = 'pie',
+              marker = list(colors = pal_rickandmorty()(length(input$MIG_sel)),
+                            line = list(color = '#FFFFFF', width = 2)),
+              textinfo = 'label+percent',
+              hoverinfo = 'text', 
+              text = ~paste0("Total ", name, ": ", 
+                             format(value, big.mark   = " " ) ) ) %>%
+      config(displaylogo = FALSE)
+    
   })
   
   # Centroide en mapa ---------------------------------------------
@@ -667,7 +679,6 @@ output$SEL_SE <- renderText({
   observe({
     
     req(input$map_zoom)
-    req(length(input$MIG_sel) > 0 )
     
     cat(as.character(Sys.time()), "MIGRA_CENT_pre", "\n")
     # Revisar. WARNING1. En SER, cuando cambia zoom pasa por acá. Quizás es para sacar mapa
@@ -675,8 +686,9 @@ output$SEL_SE <- renderText({
     
     if(input$p_DEM %in% c("MIG") && 
        input$tab1 %in% c("DEM") && 
-       input$map_zoom >= 10 && 
-       nrow(CEN_MIGRA_r()) > 0){
+       input$map_zoom >= 10 &&
+       length(input$MIG_sel) > 0 ){
+      
       b <-  8 - (input$map_zoom- 9)/2
       b <- ifelse(b <= 1.5, 1.5, b)
       cat(as.character(Sys.time()), "MIGRA_CENT", "\n")
@@ -1016,7 +1028,7 @@ output$SEL_SE <- renderText({
 
   output$EPH_plot <- renderPlot({
 
-    req(input$EPH_aglo, input$tab_gral == "Evolución", input$EPH_ind)
+    req(input$EPH_aglo, input$tab_gral == "Aglomerados", input$EPH_ind)
     
     EPH_A <- map(EPH, filter, LAB %in% input$EPH_aglo)
     

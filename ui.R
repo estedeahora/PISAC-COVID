@@ -163,7 +163,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                                                        countSelectedText = "{0} países seleccionados"),
                                                      multiple = TRUE
                                                    ),
-                                                   plotOutput("migrantes", click = "click_MIGRA")
+                                                   plotlyOutput("migrantes")
                                           )
                                         )
                                ),
@@ -275,7 +275,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                sidebarPanel(
                  pickerInput(
                    inputId = "EPH_aglo",
-                   label = "Seleccione Aglomerados para mostrar",
+                   label = "Seleccione aglomerados para mostrar",
                    choices = unique(EPH$I$LAB),
                    options = pickerOptions(
                      actionsBox = TRUE,
