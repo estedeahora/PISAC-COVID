@@ -933,7 +933,7 @@ output$SEL_SE <- renderText({
         inv <- F
       }
       
-      req(nom != "p_TOTAL_2020.03.11")
+      req(!str_starts(nom, "p_TOTAL_2020.03.11|p_SUBE_2020.03.11") )
       
       r_aux <- SUBE() %>%
         mutate(VARIABLE = .data[[nom]],
@@ -1025,7 +1025,7 @@ output$SEL_SE <- renderText({
 # Panel: Aglomerados -----------------------------------------------------------
   
 ### Gráfico de indicadores -----------------------------------------------------
-
+  
   output$EPH_plot <- renderPlot({
 
     req(input$EPH_aglo, input$tab_gral == "Aglomerados", input$EPH_ind)
@@ -1100,20 +1100,23 @@ output$SEL_SE <- renderText({
         scale_y_continuous("% de Personas sin cobertura de salud privada",
                            labels = scales::percent_format(accuracy = 1))
     }
+
     p +
       labs(x = "Relevamiento EPH") +
       # Inicio ASPO
       geom_vline(xintercept = "2T-2020", linetype = 2,
                  color = "tomato3", alpha = 0.3) +
       # Facet
-      facet_wrap(~LAB, scales = "fixed") +
+      facet_wrap(~LAB, scales = "fixed", ncol = 2) +
       # Theme
       theme_minimal() +
       theme(axis.text.x = element_text(size = 6, angle = 45),
             axis.text.y = element_text(size = 6),
             strip.text.x = element_text(size = 7), 
             legend.position = "bottom") 
-  })
+    
+  } )
+  
   
 # Panel: Descarga --------------------------------------------------------------
   
