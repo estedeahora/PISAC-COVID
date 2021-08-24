@@ -296,8 +296,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                ),
                
                mainPanel(
-                 plotOutput("EPH_plot", height = 600)
-                 
+                 plotOutput("EPH_plot")
                )
              )
     ),
@@ -313,7 +312,7 @@ ui <- fluidPage(#theme = shinytheme("united"),
                  HTML("<br><br>Este proyecto está dirigido por la Dra. María Mercedes Di Virgilio (UBA, IIGG/ CONICET) y se encuentra conformado por 11 grupos de investigación (nodos) de distintas regiones e instituciones de Argentina."),
                  HTML("<br><a href = 'http://tripcovidiigg.sociales.uba.ar/'> Saber más</a>"),
                  h2("Cómo citar..."),
-                 HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'https://estedeahora.shinyapps.io/PISAC-COVID/'> https://estedeahora.shinyapps.io/PISAC-COVID/ </a>"),
+                 HTML("Serrati, P. (2021). <em> Aplicación TRIP-COVID </em> (1.0) [Aplicación Shiny]. Proyecto PISAC TRIP-COVID. <a href= 'https://trip-pisac.shinyapps.io/COVID/'> https://trip-pisac.shinyapps.io/COVID/ </a>"),
                  HTML("<br> <br>
                     <p>Repositorio GitHub: <a href= 'https://github.com/estedeahora/TRIP-COVID'> https://github.com/estedeahora/TRIP-COVID </a></p>")
                  )
