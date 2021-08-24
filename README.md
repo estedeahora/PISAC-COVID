@@ -19,7 +19,8 @@ siguiente código:
 
 ``` r
 packages <- c("devtools",  "shiny","shinyWidgets", "shinyFeedback", "waiter", 
-              "tidyverse", "lubridate", "plotly", "viridis" 
+              "tidyverse", "lubridate", "plotly", 
+              "viridis", "ggsci",
               "sf", "leaflet", "leaflet.extras")
     
 to_install <- packages[!packages %in% installed.packages()[, "Package"]]

@@ -9,6 +9,7 @@ library(tidyverse)
 library(lubridate)
 library(plotly)
 library(viridis)
+library(ggsci)
 
 library(sf)
 library(leaflet)
