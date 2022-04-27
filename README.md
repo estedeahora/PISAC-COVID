@@ -1,4 +1,6 @@
 
+[![DOI](https://zenodo.org/badge/380836516.svg)](https://zenodo.org/badge/latestdoi/380836516)
+
 # Proyecto TRIP-COVID
 
 Este repositorio contiene los archivos utilizados en la Aplicación Shiny
