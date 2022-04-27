@@ -9,13 +9,15 @@ a la crisis desatada por la pandemia COVID-19: Una mirada desde las
 relaciones intergubernamentales y las redes de políticas* (Res 119-2020
 PISAC-COVID-19-00021).
 
+Web del proyecto: <https://trip-pisac.shinyapps.io/COVID/>
+
 # Cómo citar
 
 Para citar esta aplicación utilice:
 
-> Serrati, P. (2021). Aplicación TRIP-COVID (1.0) \[Aplicación Shiny\].
-> Proyecto PISAC TRIP-COVID. <https://doi.org/10.5281/zenodo.6496271>.
-> Acceso 26 abr. 2022.
+> Serrati, P. (2021). Aplicación TRIP-COVID (v0.9.0-beta) \[Aplicación
+> Shiny\]. Proyecto PISAC TRIP-COVID.
+> <https://doi.org/10.5281/zenodo.6496390>. Acceso 26 abr. 2022.
 
 # Versión online
 
