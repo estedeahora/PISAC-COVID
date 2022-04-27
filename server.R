@@ -447,8 +447,6 @@ observe({
       r_aux <- COVID %>% 
         select(starts_with(input$SAL_sel), cuadro)
       
-      
-      
       if(input$COVID_ch == "COVID_T"){
         # COVID: TOTAL
         r_aux$VARIABLE <- r_aux[[input$SAL_sel]]
